@@ -1,0 +1,6 @@
+<Window x:Class="Barbatos.i18n.Sample.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Barbatos.i18n WPF Sample" Height="750" Width="800" WindowStartupLocation="CenterScreen">
+    <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+</Window>

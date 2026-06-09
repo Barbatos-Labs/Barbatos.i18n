@@ -1,0 +1,65 @@
+name: barbatos-i18n-cd-nuget
+
+on:
+  push:
+    branches:
+      - main
+      - release/*
+    paths:
+      - "src/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    environment: production
+    
+    # 1. REQUIRED: Grant permissions to fetch the OIDC security token from GitHub
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Fetch the certificate
+        run: |
+          $signing_keys_payload = [System.Convert]::FromBase64String("${{ secrets.STRONG_NAME_KEY }}")
+          $currentDirectory = Get-Location
+          $certificatePath = Join-Path -Path $currentDirectory -ChildPath "src\barbatos.snk"
+          [IO.File]::WriteAllBytes("$certificatePath", $signing_keys_payload)
+          
+      # 2. REQUIRED: Automatic login via Trusted Publishing
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: phamhung
+
+      - name: Setup .NET Core SDK 10.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore -p:SourceLinkEnabled=true
+
+      # 3. USE 'dotnet nuget push' instead of 'nuget push' to automatically acquire the Token
+      - name: Publish the package to NuGet.org
+        run: dotnet nuget push **\*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+
+      - name: Publish the symbols to NuGet.org
+        run: dotnet nuget push **\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+
+      - name: Upload NuGet packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: '**\*.nupkg'

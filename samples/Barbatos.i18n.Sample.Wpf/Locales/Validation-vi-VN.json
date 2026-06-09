@@ -1,0 +1,7 @@
+{
+  "version": "2.0",
+  "Validation": {
+    "Required": "Trường này là bắt buộc.",
+    "Email": "Định dạng email không hợp lệ."
+  }
+}

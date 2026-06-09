@@ -1,0 +1,8 @@
+Key,Value
+User.FullName,Full Name
+User.Address,Home Address
+Messages.Error.InvalidEmail,Invalid email address.
+Messages.Error.Required,This field is required.
+Global.Greeting,Welcome to our application!
+Advanced.Timeout.Max,30
+Advanced.Message,"Hello, this contains a comma, and quotes too!"

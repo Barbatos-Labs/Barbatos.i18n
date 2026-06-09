@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "greeting": "Welcome to our application!",
+  "user": {
+    "profile": {
+      "fullName": "Full Name",
+      "address": "Home Address"
+    },
+    "contact": {
+      "phoneNumber": "Phone Number",
+      "email": "Email Address"
+    }
+  },
+  "actions": {
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "delete": "Delete Item",
+    "dialog": {
+      "confirm": "Are you sure you want to proceed?",
+      "success": "Operation completed successfully."
+    }
+  }
+}

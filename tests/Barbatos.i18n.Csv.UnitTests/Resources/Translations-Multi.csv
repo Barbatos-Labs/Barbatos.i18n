@@ -1,0 +1,8 @@
+Key,en-US,ko-KR
+User.FullName,Full Name,성명
+User.Address,Home Address,자택 주소
+Messages.Error.InvalidEmail,Invalid email address.,이메일 주소가 올바르지 않습니다.
+Messages.Error.Required,This field is required.,필수 입력 항목입니다.
+Global.Greeting,Welcome to our application!,저희 애플리케이션에 오신 것을 환영합니다!
+Advanced.Timeout.Max,30,30
+Advanced.Message,"Hello, this contains a comma, and quotes too!","안녕하세요, 쉼표가 있습니다!"

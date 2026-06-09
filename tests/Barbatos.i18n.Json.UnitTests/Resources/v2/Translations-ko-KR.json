@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "greeting": "저희 애플리케이션에 오신 것을 환영합니다!",
+  "user": {
+    "profile": {
+      "fullName": "성명",
+      "address": "자택 주소"
+    },
+    "contact": {
+      "phoneNumber": "전화번호",
+      "email": "이메일 주소"
+    }
+  },
+  "actions": {
+    "save": "변경사항 저장",
+    "cancel": "취소",
+    "delete": "항목 삭제",
+    "dialog": {
+      "confirm": "계속 진행하시겠습니까?",
+      "success": "작업이 성공적으로 완료되었습니다."
+    }
+  }
+}

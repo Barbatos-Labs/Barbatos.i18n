@@ -1,0 +1,7 @@
+{
+  "version": "2.0",
+  "Validation": {
+    "Required": "This field is required.",
+    "Email": "Invalid email format."
+  }
+}

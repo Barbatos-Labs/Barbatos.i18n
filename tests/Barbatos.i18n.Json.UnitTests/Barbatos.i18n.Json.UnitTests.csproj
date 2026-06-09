@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <IsTrimmable>false</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Barbatos.i18n.Json\Barbatos.i18n.Json.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\v1\Translations-en-US.json" />
+    <None Remove="Resources\v1\Translations-ko-KR.json" />
+    <None Remove="Resources\v2\Translations-en-US.json" />
+    <None Remove="Resources\v2\Translations-ko-KR.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\v1\Translations-en-US.json" />
+    <EmbeddedResource Include="Resources\v1\Translations-ko-KR.json" />
+    <EmbeddedResource Include="Resources\v2\Translations-en-US.json" />
+    <EmbeddedResource Include="Resources\v2\Translations-ko-KR.json" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "strings": [
+    {
+      "name": "Test",
+      "value": "영어로 테스트"
+    }
+  ]
+}
