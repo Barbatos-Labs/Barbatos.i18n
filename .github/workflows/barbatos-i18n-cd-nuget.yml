@@ -59,11 +59,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore -p:SourceLinkEnabled=true
 
       # 3. USE 'dotnet nuget push' instead of 'nuget push' to automatically acquire the Token
+      # --skip-duplicate: nupkg của cùng version không thể push lại → bỏ qua an toàn
       - name: Publish the package to NuGet.org
         run: dotnet nuget push **\*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
 
+      # Không dùng --skip-duplicate cho snupkg để có thể re-upload symbols bị lỗi
       - name: Publish the symbols to NuGet.org
-        run: dotnet nuget push **\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push **\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
 
       - name: Upload NuGet packages as artifacts
         uses: actions/upload-artifact@v4
