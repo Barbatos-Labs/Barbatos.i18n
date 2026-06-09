@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://github.com/lepoco/i18n/blob/main/build/nuget.png?raw=true" width="128" alt="Lepo.i18n logo"/>
+    <img src="https://github.com/StHung/Barbatos.i18n/blob/main/build/nuget.png?raw=true" width="128" alt="Lepo.i18n logo"/>
     <h1>Barbatos.i18n</h1>
     <h3><em>The Progressive Internationalization Library for .NET</em></h3>
 </div>
