@@ -1,18 +1,19 @@
-name: barbatos-i18n-cd-nuget
+name: barbatos-i18n-republish-symbols
 
 on:
-  # Chạy tự động khi anh publish một GitHub Release
-  release:
-    types: [published]
-  # Chạy thủ công từ tab Actions nếu cần
+  # Chỉ chạy thủ công — dùng khi snupkg bị reject hoặc cần re-upload
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version cần re-upload symbols (vd: 1.0.1). Để trống = build từ code hiện tại.'
+        required: false
+        default: ''
 
 jobs:
-  deploy:
+  republish-symbols:
     runs-on: windows-latest
     environment: production
-    
-    # 1. REQUIRED: Grant permissions to fetch the OIDC security token from GitHub
+
     permissions:
       id-token: write
       contents: read
@@ -45,7 +46,6 @@ jobs:
           [IO.File]::WriteAllBytes("$certificatePath", $signing_keys_payload)
           Write-Host "Certificate written to $certificatePath ($($signing_keys_payload.Length) bytes)"
 
-      # 2. REQUIRED: Automatic login via Trusted Publishing
       - name: NuGet login (OIDC)
         uses: NuGet/login@v1
         id: login
@@ -55,19 +55,24 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
 
-      - name: Build
+      - name: Build (Release + SourceLink)
         run: dotnet build --configuration Release --no-restore -p:SourceLinkEnabled=true
 
-      # 3. USE 'dotnet nuget push' instead of 'nuget push' to automatically acquire the Token
-      # --skip-duplicate: nupkg của cùng version không thể push lại → bỏ qua an toàn
-      - name: Publish the package to NuGet.org
-        run: dotnet nuget push **\*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+      # Không push nupkg — chỉ re-upload snupkg
+      # Không dùng --skip-duplicate để NuGet.org nhận bản symbols mới thay thế bản lỗi
+      - name: Re-publish symbols to NuGet.org
+        run: |
+          $snupkgs = Get-ChildItem -Recurse -Filter "*.snupkg" | Where-Object { $_.FullName -notmatch "\\obj\\" }
+          if ($snupkgs.Count -eq 0) {
+            Write-Error "No .snupkg files found!"
+            exit 1
+          }
+          Write-Host "Found $($snupkgs.Count) snupkg file(s):"
+          $snupkgs | ForEach-Object { Write-Host "  - $($_.Name)" }
 
-      - name: Publish the symbols to NuGet.org
-        run: dotnet nuget push **\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
-
-      - name: Upload NuGet packages as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuget-packages
-          path: '**\*.nupkg'
+          foreach ($pkg in $snupkgs) {
+            Write-Host "Pushing $($pkg.Name)..."
+            dotnet nuget push "$($pkg.FullName)" `
+              --source https://api.nuget.org/v3/index.json `
+              --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          }
