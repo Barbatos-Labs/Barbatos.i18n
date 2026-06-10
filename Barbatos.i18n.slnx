@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/samples/">
+    <Project Path="samples/Barbatos.i18n.Sample.WebApi/Barbatos.i18n.Sample.WebApi.csproj" />
     <Project Path="samples/Barbatos.i18n.Sample.Maui/Barbatos.i18n.Sample.Maui.csproj" />
     <Project Path="samples/Barbatos.i18n.Sample.Wpf/Barbatos.i18n.Sample.Wpf.csproj" />
+	<Project Path="samples/Barbatos.i18n.Sample.Wpf/Barbatos.i18n.Sample.Maui.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
@@ -14,16 +16,16 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Barbatos.i18n.Csv/Barbatos.i18n.Csv.csproj" />
-    <Project Path="src/Barbatos.i18n.DependencyInjection/Barbatos.i18n.DependencyInjection.csproj" Id="babcf119-9a3c-4441-bb8a-7eaf47595d0e" />
+    <Project Path="src/Barbatos.i18n.DependencyInjection/Barbatos.i18n.DependencyInjection.csproj" />
     <Project Path="src/Barbatos.i18n.Ini/Barbatos.i18n.Ini.csproj" />
     <Project Path="src/Barbatos.i18n.Json/Barbatos.i18n.Json.csproj" />
     <Project Path="src/Barbatos.i18n.Maui/Barbatos.i18n.Maui.csproj" />
-    <Project Path="src/Barbatos.i18n.Wpf/Barbatos.i18n.Wpf.csproj" Id="290f07f7-aac9-4f72-8a34-1c851772eec8" />
+    <Project Path="src/Barbatos.i18n.Wpf/Barbatos.i18n.Wpf.csproj" />
     <Project Path="src/Barbatos.i18n/Barbatos.i18n.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Barbatos.i18n.Csv.UnitTests/Barbatos.i18n.Csv.UnitTests.csproj" />
-    <Project Path="tests/Barbatos.i18n.DependencyInjection.UnitTests/Barbatos.i18n.DependencyInjection.UnitTests.csproj" Id="031ee4bc-4d2d-4a61-9e23-20b8120a5e31" />
+    <Project Path="tests/Barbatos.i18n.DependencyInjection.UnitTests/Barbatos.i18n.DependencyInjection.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.Ini.UnitTests/Barbatos.i18n.Ini.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.Json.UnitTests/Barbatos.i18n.Json.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.UnitTests/Barbatos.i18n.UnitTests.csproj" />

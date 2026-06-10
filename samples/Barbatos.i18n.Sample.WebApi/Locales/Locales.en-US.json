@@ -1,0 +1,10 @@
+{
+  "version": "2.0",
+  "Greeting": "Hello from Barbatos.i18n Web API!",
+  "CurrentTime": "Current time is {0}",
+  "Price": "The price is {0}",
+  "Errors": {
+    "NotFound": "Resource not found.",
+    "Internal": "Internal server error occurred."
+  }
+}

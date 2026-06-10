@@ -1,0 +1,10 @@
+{
+  "version": "2.0",
+  "Greeting": "Xin chào từ Barbatos.i18n Web API!",
+  "CurrentTime": "Thời gian hiện tại là {0}",
+  "Price": "Giá là {0}",
+  "Errors": {
+    "NotFound": "Không tìm thấy tài nguyên.",
+    "Internal": "Đã xảy ra lỗi máy chủ nội bộ."
+  }
+}
