@@ -104,7 +104,7 @@ public static class ApplicationExtensions
         }
 
         // If the window is already active, we must update its Language property directly
-        if (Application.Current?.MainWindow != null)
+        if (Application.Current?.MainWindow is not null)
         {
             Application.Current.MainWindow.Language = XmlLanguage.GetLanguage(targetCulture.IetfLanguageTag);
         }
