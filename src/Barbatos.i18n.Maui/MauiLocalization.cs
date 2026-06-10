@@ -3,29 +3,36 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
-namespace Barbatos.i18n.Wpf;
+namespace Barbatos.i18n.Maui;
 
 /// <summary>
-/// Provides a global integration point (Service Locator Bridge) for Dependency Injection in WPF.
-/// Because XAML <see cref="System.Windows.Markup.MarkupExtension"/> (like StringLocalizerExtension) 
-/// are instantiated by the XAML parser using their default constructors, they cannot use standard 
-/// constructor injection. This class bridges the gap by holding a static reference to the application's 
-/// <see cref="IServiceProvider"/>, allowing XAML extensions to resolve localization providers from the DI container.
+/// Provides a global integration point (Service Locator Bridge) for Dependency Injection in MAUI.
 /// </summary>
-public static class WpfLocalization
+public static class MauiLocalization
 {
     /// <summary>
-    /// Gets the service provider used for WPF localization.
+    /// Gets the service provider used for MAUI localization.
     /// </summary>
     public static IServiceProvider? ServiceProvider { get; private set; }
 
+    private static ILocalizationProvider? _directProvider;
+
     /// <summary>
-    /// Initializes WPF localization with the specified service provider.
+    /// Initializes MAUI localization with the specified service provider.
     /// </summary>
     /// <param name="serviceProvider">The service provider to use.</param>
     public static void Initialize(IServiceProvider serviceProvider)
     {
         ServiceProvider = serviceProvider;
+    }
+
+    /// <summary>
+    /// Initializes MAUI localization with the specified provider.
+    /// </summary>
+    /// <param name="provider">The provider to use.</param>
+    public static void Initialize(ILocalizationProvider provider)
+    {
+        _directProvider = provider;
     }
 
     /// <summary>
@@ -35,9 +42,12 @@ public static class WpfLocalization
     /// <returns>The <see cref="ILocalizationProvider"/> if found; otherwise, null.</returns>
     public static ILocalizationProvider? GetProvider(string? key = null)
     {
-        if (ServiceProvider is null) return null;
+        if (_directProvider != null) return _directProvider;
 
-        if (ServiceProvider.GetService(typeof(ILocalizationProviderResolver)) is ILocalizationProviderResolver resolver)
+        if (ServiceProvider == null) return null;
+
+        var resolver = ServiceProvider.GetService(typeof(ILocalizationProviderResolver)) as ILocalizationProviderResolver;
+        if (resolver != null)
         {
             return resolver.GetProvider(key);
         }

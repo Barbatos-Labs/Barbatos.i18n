@@ -51,8 +51,7 @@ public static class ApplicationExtensions
     /// <returns>The application with the set culture.</returns>
     public static Application SetLocalizationCulture(this Application app, CultureInfo culture)
     {
-        var diManager = WpfLocalization.ServiceProvider?.GetService(typeof(ILocalizationCultureManager)) as ILocalizationCultureManager;
-        if (diManager is not null)
+        if (WpfLocalization.ServiceProvider?.GetService(typeof(ILocalizationCultureManager)) is ILocalizationCultureManager diManager)
         {
             diManager.SetCulture(culture);
         }
