@@ -87,7 +87,7 @@ public static class ServiceCollectionExtensions
         var resolverDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ILocalizationProviderResolver));
         LocalizationProviderResolver resolver;
 
-        if (resolverDescriptor == null)
+        if (resolverDescriptor is null)
         {
             resolver = new LocalizationProviderResolver();
             services.AddSingleton<ILocalizationProviderResolver>(resolver);

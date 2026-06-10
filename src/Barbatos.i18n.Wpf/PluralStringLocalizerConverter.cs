@@ -34,7 +34,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
         {
             if (values[0] is int i) count = i;
             else if (values[0] is string s && int.TryParse(s, out int parsed)) count = parsed;
-            else if (values[0] != null) int.TryParse(values[0].ToString(), out count);
+            else if (values[0] is not null) int.TryParse(values[0].ToString(), out count);
         }
 
         CultureInfo currentCulture =
