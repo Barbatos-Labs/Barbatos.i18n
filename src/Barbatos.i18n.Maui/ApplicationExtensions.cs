@@ -1,8 +1,21 @@
+// This Source Code Form is subject to the terms of the MIT License.
+// If a copy of the MIT was not distributed with this file, You can obtain one at https://opensource.org/licenses/MIT.
+// Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
+// All Rights Reserved.
 
 namespace Barbatos.i18n.Maui;
 
+/// <summary>
+/// Provides extension methods for the <see cref="MauiAppBuilder"/> class.
+/// </summary>
 public static class ApplicationExtensions
 {
+    /// <summary>
+    /// Configures the application to use a string localizer.
+    /// </summary>
+    /// <param name="builder">The application to configure.</param>
+    /// <param name="configure">A delegate to configure the localization builder.</param>
+    /// <returns>The configured application.</returns>
     public static MauiAppBuilder UseBarbatosLocalization(this MauiAppBuilder builder, Action<LocalizationBuilder> configure)
     {
         var locBuilder = new LocalizationBuilder();
@@ -21,7 +34,7 @@ public static class ApplicationExtensions
     }
 
     // Internal classes to bridge the DI if needed, similar to Barbatos.i18n.DependencyInjection but for MAUI Host
-    private class DefaultLocalizationProviderResolver : ILocalizationProviderResolver
+    private sealed class DefaultLocalizationProviderResolver : ILocalizationProviderResolver
     {
         private readonly ILocalizationProvider _provider;
         public DefaultLocalizationProviderResolver(ILocalizationProvider provider) => _provider = provider;
@@ -29,7 +42,7 @@ public static class ApplicationExtensions
         public IEnumerable<ILocalizationProvider> GetAllProviders() => new[] { _provider };
     }
 
-    private class DefaultLocalizationCultureManager : ILocalizationCultureManager
+    private sealed class DefaultLocalizationCultureManager : ILocalizationCultureManager
     {
         private readonly ILocalizationProvider _provider;
         public DefaultLocalizationCultureManager(ILocalizationProvider provider) => _provider = provider;
