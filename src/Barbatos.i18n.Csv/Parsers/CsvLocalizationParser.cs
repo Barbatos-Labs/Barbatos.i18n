@@ -13,6 +13,7 @@ internal static class CsvLocalizationParser
     public static Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> Parse(string contents)
     {
         Dictionary<string, List<KeyValuePair<LocalizationKey, string?>>> results = new();
+        Dictionary<string, HashSet<LocalizationKey>> cultureKeys = new();
         List<List<string>> rows = ParseCsv(contents);
         
         bool isFirstRow = true;
@@ -38,12 +39,14 @@ internal static class CsvLocalizationParser
                     {
                         cultures.Add(""); // Single culture
                         results[""] = new();
+                        cultureKeys[""] = new();
                         break; // Only need one column
                     }
                     else
                     {
                         cultures.Add(colName);
                         results[colName] = new();
+                        cultureKeys[colName] = new();
                     }
                 }
                 
@@ -68,10 +71,10 @@ internal static class CsvLocalizationParser
                 string value = row[i];
                 
                 // Add to result if the dictionary has the list (it should)
-                if (results.TryGetValue(cultureName, out var list))
+                if (results.TryGetValue(cultureName, out var list) && cultureKeys.TryGetValue(cultureName, out var keysSet))
                 {
                     // Check for duplicate keys in the specific culture
-                    if (list.Any(k => k.Key.Equals(locKey)))
+                    if (!keysSet.Add(locKey))
                     {
                         throw new LocalizationBuilderException($"The contents of the CSV file contains duplicate \"{key}\" keys.");
                     }
