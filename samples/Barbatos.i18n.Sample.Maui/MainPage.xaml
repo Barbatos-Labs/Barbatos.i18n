@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:Barbatos.i18n.Maui;assembly=Barbatos.i18n.Maui"
+             x:Class="Barbatos.i18n.Sample.Maui.MainPage">
+
+    <ContentPage.Resources>
+        <i18n:LocalizeConverter x:Key="LocalizeConverter" />
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="0" Padding="20,20,20,40">
+
+            <!-- Title -->
+            <Label Text="{i18n:StringLocalizer Text='Title'}"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,20" />
+
+            <!-- Switch Language -->
+            <Border Stroke="#DDDDDD"
+                    StrokeThickness="1"
+                    Padding="15"
+                    Margin="0,0,0,20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="8" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="{i18n:StringLocalizer Text='SwitchLanguage'}"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           HorizontalOptions="Center" />
+                    <Picker x:Name="LanguagePicker"
+                            ItemsSource="{Binding SupportedCultures}"
+                            SelectedItem="{Binding SelectedCulture}"
+                            ItemDisplayBinding="{Binding NativeName}"
+                            HorizontalOptions="Center"
+                            WidthRequest="250" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- 1. Basic Static Arguments -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderBasicStatic'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Label Text="{i18n:StringLocalizer Text='Greeting'}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='GreetingWithName', Arg='Static John'}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:PluralStringLocalizer Text='OneApple', PluralText='ManyApples', Count=5}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,20" />
+
+            <!-- 2. Dynamic String (Single Binding) -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderDynamicSingle'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <HorizontalStackLayout Spacing="10" Margin="10,0,0,8">
+                <Label Text="{i18n:StringLocalizer Text='EnterName'}"
+                       VerticalOptions="Center"
+                       WidthRequest="90" />
+                <Entry Text="{Binding UserName}"
+                       WidthRequest="200"
+                       Placeholder="Name..." />
+            </HorizontalStackLayout>
+            <Label Text="{i18n:StringLocalizer Text='GreetingWithName', BindArg={Binding UserName}}"
+                   TextColor="#107C10"
+                   Margin="10,0,0,20" />
+
+            <!-- 3. Dynamic String (Multiple Bindings) -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderDynamicMultiple'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto"
+                  ColumnSpacing="8" Margin="10,0,0,8">
+                <Label Grid.Column="0"
+                       Text="{i18n:StringLocalizer Text='FirstName'}"
+                       VerticalOptions="Center" />
+                <Entry Grid.Column="1"
+                       Text="{Binding FirstName}"
+                       Placeholder="First..." />
+                <Label Grid.Column="2"
+                       Text="{i18n:StringLocalizer Text='LastName'}"
+                       VerticalOptions="Center" />
+                <Entry Grid.Column="3"
+                       Text="{Binding LastName}"
+                       Placeholder="Last..." />
+            </Grid>
+            <Label Text="{i18n:StringLocalizer Text='GreetingWithFullName', BindArg={Binding FirstName}, BindArg2={Binding LastName}}"
+                   TextColor="#D83B01"
+                   Margin="10,0,0,20" />
+
+            <!-- 4. Dynamic Plural Localization -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderPlural'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <HorizontalStackLayout Spacing="12" Margin="10,0,0,8">
+                <Button Text=" - "
+                        Command="{Binding DecrementApplesCommand}"
+                        WidthRequest="44"
+                        FontAttributes="Bold" />
+                <Label Text="{Binding AppleCount}"
+                       VerticalOptions="Center"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       WidthRequest="30"
+                       HorizontalTextAlignment="Center" />
+                <Button Text=" + "
+                        Command="{Binding IncrementApplesCommand}"
+                        WidthRequest="44"
+                        FontAttributes="Bold" />
+            </HorizontalStackLayout>
+            <Label Text="{i18n:PluralStringLocalizer Text='OneApple', PluralText='ManyApples', BindCount={Binding AppleCount}}"
+                   TextColor="#A80000"
+                   Margin="10,0,0,20" />
+
+            <!-- 5. Translate Picker Items -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderAttributes'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Picker ItemsSource="{Binding PickerItems}"
+                    SelectedIndex="0"
+                    Margin="10,0,0,20"
+                    HorizontalOptions="Start"
+                    WidthRequest="250">
+                <Picker.ItemDisplayBinding>
+                    <Binding Converter="{StaticResource LocalizeConverter}" />
+                </Picker.ItemDisplayBinding>
+            </Picker>
+
+            <!-- 6. String Format -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderStringFormat'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Label Text="{i18n:StringLocalizer Text='Greeting', StringFormat='==&gt; {0} &lt;=='}"
+                   TextColor="#6B69D6"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='GreetingWithName', BindArg={Binding UserName}, StringFormat='[ {0} ]'}"
+                   TextColor="#6B69D6"
+                   Margin="10,0,0,20" />
+
+            <!-- 7. Namespaces (LocalizationSet Name) -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderNamespace'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Label Text="{i18n:StringLocalizer Text='NetworkError', Namespace='errors'}"
+                   TextColor="#D13438"
+                   Margin="10,0,0,20" />
+
+            <!-- 8. Multiple Providers (ProviderKey) -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderProviderKey'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Label Text="{i18n:StringLocalizer Text='BonusMessage', ProviderKey='SecondaryProvider', Namespace='extra'}"
+                   TextColor="#FF8C00"
+                   Margin="10,0,0,20" />
+
+            <!-- 9. Culture-specific Date and Number Formats -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderCultureFormat'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <Label Text="{i18n:StringLocalizer Text='CurrentDateIs', BindArg={Binding CurrentDate}}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='LongDateIs', BindArg={Binding CurrentDate}}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='FullDateTimeIs', BindArg={Binding CurrentDate}}"
+                   TextColor="#005A9E"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='PriceIs', BindArg={Binding Price}}"
+                   TextColor="#107C10"
+                   Margin="10,0,0,5" />
+            <Label Text="{i18n:StringLocalizer Text='DistanceIs', BindArg={Binding Distance}}"
+                   TextColor="#107C10"
+                   Margin="10,0,0,5" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

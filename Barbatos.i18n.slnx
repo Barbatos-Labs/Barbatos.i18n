@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/samples/">
+    <Project Path="samples/Barbatos.i18n.Sample.Maui/Barbatos.i18n.Sample.Maui.csproj" />
     <Project Path="samples/Barbatos.i18n.Sample.Wpf/Barbatos.i18n.Sample.Wpf.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
@@ -16,6 +17,7 @@
     <Project Path="src/Barbatos.i18n.DependencyInjection/Barbatos.i18n.DependencyInjection.csproj" Id="babcf119-9a3c-4441-bb8a-7eaf47595d0e" />
     <Project Path="src/Barbatos.i18n.Ini/Barbatos.i18n.Ini.csproj" />
     <Project Path="src/Barbatos.i18n.Json/Barbatos.i18n.Json.csproj" />
+    <Project Path="src/Barbatos.i18n.Maui/Barbatos.i18n.Maui.csproj" />
     <Project Path="src/Barbatos.i18n.Wpf/Barbatos.i18n.Wpf.csproj" Id="290f07f7-aac9-4f72-8a34-1c851772eec8" />
     <Project Path="src/Barbatos.i18n/Barbatos.i18n.csproj" />
   </Folder>
