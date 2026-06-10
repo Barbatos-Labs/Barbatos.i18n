@@ -1,0 +1,6 @@
+@Barbatos.i18n.Sample.WebApi_HostAddress = http://localhost:5213
+
+GET {{Barbatos.i18n.Sample.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

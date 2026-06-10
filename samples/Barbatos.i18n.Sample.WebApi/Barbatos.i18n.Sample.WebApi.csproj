@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Barbatos.i18n\Barbatos.i18n.csproj" />
+    <ProjectReference Include="..\..\src\Barbatos.i18n.DependencyInjection\Barbatos.i18n.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\src\Barbatos.i18n.Json\Barbatos.i18n.Json.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Locales\Locales.en-US.json">
+        <LogicalName>Barbatos.i18n.Sample.WebApi.Locales.Locales.en-US.json</LogicalName>
+        <Type>Non-Resx</Type>
+        <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Locales\Locales.vi-VN.json">
+        <LogicalName>Barbatos.i18n.Sample.WebApi.Locales.Locales.vi-VN.json</LogicalName>
+        <Type>Non-Resx</Type>
+        <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
