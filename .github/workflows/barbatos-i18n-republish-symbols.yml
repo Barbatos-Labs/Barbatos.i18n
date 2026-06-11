@@ -53,7 +53,9 @@ jobs:
           user: phamhung
 
       - name: Install dependencies
-        run: dotnet restore
+        run: |
+          dotnet workload restore
+          dotnet restore
 
       - name: Build (Release + SourceLink)
         run: dotnet build --configuration Release --no-restore -p:SourceLinkEnabled=true
