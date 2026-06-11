@@ -52,6 +52,12 @@ jobs:
         with:
           user: phamhung
 
+      - name: Remove samples and tests from solution
+        run: |
+          $slnx = Get-Content Barbatos.i18n.slnx -Raw
+          $slnx = $slnx -replace '(?s)\s*<Folder Name="/samples/">.*?</Folder>', '' -replace '(?s)\s*<Folder Name="/tests/">.*?</Folder>', ''
+          Set-Content -Path Barbatos.i18n.slnx -Value $slnx
+
       - name: Install dependencies
         run: |
           dotnet workload restore
