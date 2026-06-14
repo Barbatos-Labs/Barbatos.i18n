@@ -100,7 +100,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
                 ?? string.Empty;
         }
 
-        return string.Format(currentCulture, localizedString, count);
+        return string.Format(CultureInfo.CurrentCulture, localizedString, count);
     }
 
     /// <summary>

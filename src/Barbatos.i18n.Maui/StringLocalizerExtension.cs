@@ -161,7 +161,7 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
             if (Arg4 is not null) { args ??= new List<object?>(); args.Add(Arg4); }
             if (Arg5 is not null) { args ??= new List<object?>(); args.Add(Arg5); }
 
-            result = localizationSet.Format(currentCulture, (LocalizationKey)Text, args?.ToArray() ?? null) ?? EscapeText(Text) ?? string.Empty;
+            result = localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)Text, args?.ToArray() ?? null) ?? EscapeText(Text) ?? string.Empty;
         }
 
         if (StringFormat is not null)

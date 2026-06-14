@@ -72,6 +72,6 @@ public static class MauiAppBuilderExtensions
         public void SetCulture(CultureInfo cultureInfo) => _provider.SetCulture(cultureInfo);
         public void SetCulture(string cultureName) => _provider.SetCulture(new CultureInfo(cultureName));
         public CultureInfo GetCulture() => _provider.GetCulture();
-        public LocalizationOptions Options => new LocalizationOptions { SyncFormattingCulture = false };
+        public LocalizationOptions Options => new LocalizationOptions();
     }
 }

@@ -137,7 +137,7 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
                 ?? string.Empty;
         }
 
-        string result = string.Format(currentCulture, localizedString, Count ?? 0);
+        string result = string.Format(CultureInfo.CurrentCulture, localizedString, Count ?? 0);
         if (StringFormat is not null)
         {
             result = string.Format(StringFormat, result);

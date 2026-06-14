@@ -11,16 +11,8 @@ namespace Barbatos.i18n;
 public class LocalizationOptions
 {
     /// <summary>
-    /// If true, automatically updates CultureInfo.CurrentCulture and CultureInfo.CurrentUICulture 
-    /// whenever the UI localization language changes.
-    /// Default is true.
+    /// Gets or sets a custom builder to modify the formatting culture before it is set.
+    /// If provided, <see cref="CultureInfo.CurrentCulture"/> will be updated alongside <see cref="CultureInfo.CurrentUICulture"/>.
     /// </summary>
-    public bool SyncFormattingCulture { get; set; } = true;
-
-    /// <summary>
-    /// A custom builder function to modify or replace the formatting culture 
-    /// whenever the localization culture changes. The parameter is the current localization culture.
-    /// The returned culture will be set as CultureInfo.CurrentCulture.
-    /// </summary>
-    public Func<CultureInfo, CultureInfo>? CustomFormattingCultureBuilder { get; set; }
+    public Func<CultureInfo, CultureInfo>? FormatCultureBuilder { get; set; }
 }

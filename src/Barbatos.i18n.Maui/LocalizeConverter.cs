@@ -46,7 +46,7 @@ public class LocalizeConverter : IValueConverter
             return stringValue;
         }
 
-        return localizationSet.Format(currentCulture, (LocalizationKey)stringValue);
+        return localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)stringValue);
     }
 
     /// <summary>

@@ -71,7 +71,7 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             var format = _stringFormats is not null && i < _stringFormats.Length ? _stringFormats[i] : null;
             if (!string.IsNullOrEmpty(format))
             {
-                formatValues[i] = string.Format(currentCulture, format, val);
+                formatValues[i] = string.Format(CultureInfo.CurrentCulture, format, val);
             }
             else
             {
@@ -79,7 +79,7 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             }
         }
 
-        return localizationSet.Format(culture, Text, formatValues) ?? StringLocalizerExtension.EscapeText(Text);
+        return localizationSet.Format(CultureInfo.CurrentCulture, Text, formatValues) ?? StringLocalizerExtension.EscapeText(Text);
     }
 
     /// <summary>

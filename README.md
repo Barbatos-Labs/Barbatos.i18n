@@ -1,19 +1,15 @@
-<div align="center">
-    <img src="https://github.com/StHung/Barbatos.i18n/blob/main/build/nuget.png?raw=true" width="128" alt="Lepo.i18n logo"/>
-    <h1>Barbatos.i18n</h1>
-    <h3><em>The Progressive Internationalization Library for .NET</em></h3>
-</div>
+# Barbatos.i18n
 
-<p align="center">
-    <strong>Add cross-platform multilingual support to MAUI, WPF, WebApi, WinForms, or CLI apps efficiently. JSON, INI, CSV, YAML, and RESX resources with Dependency Injection.</strong>
-</p>
+![Barbatos.i18n logo](https://github.com/Barbatos-Labs/Barbatos.i18n/blob/main/build/nuget.png?raw=true)
 
-<p align="center">
-    <a href="https://www.nuget.org/packages/Barbatos.i18n"><img src="https://img.shields.io/nuget/v/Barbatos.i18n.svg" alt="NuGet"/></a>
-    <a href="https://www.nuget.org/packages/Barbatos.i18n"><img src="https://img.shields.io/nuget/dt/Barbatos.i18n.svg" alt="NuGet Downloads"/></a>
-    <a href="https://github.com/StHung/Barbatos.i18n/stargazers"><img src="https://img.shields.io/github/stars/StHung/Barbatos.i18n?style=social" alt="GitHub stars"/></a>
-    <a href="https://github.com/StHung/Barbatos.i18n/tree/main/build/LICENSE"><img src="https://img.shields.io/github/license/StHung/Barbatos.i18n" alt="License"/></a>
-</p>
+### *The Progressive Internationalization Library for .NET*
+
+**Add cross-platform multilingual support to MAUI, WPF, WebApi, WinForms, or CLI apps efficiently. JSON, INI, CSV, YAML, and RESX resources with Dependency Injection.**
+
+[![NuGet](https://img.shields.io/nuget/v/Barbatos.i18n.svg)](https://www.nuget.org/packages/Barbatos.i18n)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Barbatos.i18n.svg)](https://www.nuget.org/packages/Barbatos.i18n)
+[![GitHub stars](https://img.shields.io/github/stars/Barbatos-Labs/Barbatos.i18n?style=social)](https://github.com/Barbatos-Labs/Barbatos.i18n/stargazers)
+[![License](https://img.shields.io/github/license/Barbatos-Labs/Barbatos.i18n)](https://github.com/Barbatos-Labs/Barbatos.i18n/tree/main/build/LICENSE)
 
 ---
 
@@ -75,6 +71,9 @@ dotnet add package Barbatos.i18n.Csv
 
 # WPF markup extensions
 dotnet add package Barbatos.i18n.Wpf
+
+# MAUI markup extensions and integration
+dotnet add package Barbatos.i18n.Maui
 ```
 
 ---
@@ -213,11 +212,20 @@ public partial class App : Application
 
         var services = new ServiceCollection();
 
-        // 1. Register Providers
-        services.AddStringLocalizer(options => 
+        // 1. Configure Options (Optional)
+        services.ConfigureLocalizationOptions(options => 
         {
-            options.SyncFormattingCulture = false; 
-        }, builder =>
+
+            options.FormatCultureBuilder = uiCulture => 
+            {
+                // Example: Customize specific formatting rules globally
+                uiCulture.NumberFormat.NumberDecimalSeparator = ".";
+                return uiCulture;
+            };
+        });
+
+        // 2. Register Providers
+        services.AddStringLocalizer(builder =>
         {
             // Load from YAML (Built-in)
             builder.FromYaml("Locales.Settings-en-US.yaml", new CultureInfo("en-US"));
@@ -252,19 +260,17 @@ public partial class App : Application
 > 
 > The `options =>` block configures global settings. The most notable properties are:
 > 
-> **1. `SyncFormattingCulture` (bool)**
-> - If `true` (default), changing the language via Barbatos will also automatically change `CultureInfo.CurrentCulture` (which affects how numbers, currencies, and dates are formatted globally).
-> - If `false`, changing the language only updates `CultureInfo.CurrentUICulture` (which only affects translated strings), leaving your default number/date formats intact.
-> 
-> **2. `CustomFormattingCultureBuilder` (Func)**
-> - Allows you to finely tune the formatting culture dynamically when `SyncFormattingCulture` is `true`. This is useful if you want to customize specific properties, like `NumberFormat`, for all UI languages:
+> **`FormatCultureBuilder` (Func)**
+> - By default, changing the language **automatically updates both** `CultureInfo.CurrentUICulture` (translated strings) AND `CultureInfo.CurrentCulture` (affecting numbers, dates, currencies globally) to match the new language.
+> - If you provide a `FormatCultureBuilder`, you can finely tune specific properties like `NumberFormat` before the formatting culture is applied:
 > > ```csharp
-> > options.CustomFormattingCultureBuilder = uiCulture => 
+> > options.FormatCultureBuilder = uiCulture => 
 > > {
-> >     uiCulture.NumberFormat.NumberDecimalSeparator = ".";
-> >     uiCulture.NumberFormat.CurrencySymbol = "€";
+> >     uiCulture.NumberFormat.CurrencySymbol = "đ";
 > >     return uiCulture;
 > > };
+> > // Or to DISABLE synchronizing the formatting culture entirely:
+> > // options.FormatCultureBuilder = _ => CultureInfo.CurrentCulture;
 > > ```
 
 > [!IMPORTANT]
@@ -290,11 +296,20 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
 
-        // 1. Register Providers on MauiAppBuilder
-        builder.UseStringLocalizer(options => 
+        // 1. Configure Options (Optional)
+        builder.Services.ConfigureLocalizationOptions(options => 
         {
-            options.SyncFormattingCulture = false; 
-        }, locBuilder =>
+
+            options.FormatCultureBuilder = uiCulture => 
+            {
+                // Example: Customize specific formatting rules globally
+                uiCulture.NumberFormat.NumberDecimalSeparator = ".";
+                return uiCulture;
+            };
+        });
+
+        // 2. Register Providers on MauiAppBuilder
+        builder.UseStringLocalizer(locBuilder =>
         {
             locBuilder.FromJson("Locales.Locales-en-US.json", new CultureInfo("en-US"));
             locBuilder.FromJson("Locales.Locales-vi-VN.json", new CultureInfo("vi-VN"));
@@ -649,6 +664,7 @@ Barbatos is designed to be modular. Only install what you need.
 | [`Barbatos.i18n.Ini`](https://www.nuget.org/packages/Barbatos.i18n.Ini) | Load translations from INI files |
 | [`Barbatos.i18n.Csv`](https://www.nuget.org/packages/Barbatos.i18n.Csv) | Load translations from CSV files |
 | [`Barbatos.i18n.Wpf`](https://www.nuget.org/packages/Barbatos.i18n.Wpf) | WPF markup extensions (`StringLocalizer`, `PluralStringLocalizer`, `LocalizeConverter`) |
+| [`Barbatos.i18n.Maui`](https://www.nuget.org/packages/Barbatos.i18n.Maui) | .NET MAUI markup extensions and integration |
 
 ---
 
@@ -658,7 +674,7 @@ The library contains a rich set of primitives for localization management (`Barb
 
 Due to the extensive nature of the library's interfaces, classes, and properties, the full API Reference has been moved to a dedicated document modeled after Microsoft's official .NET documentation format.
 
-👉 **[Read the Full API Reference](https://github.com/StHung/Barbatos.i18n/blob/main/API-REFERENCE.md)** 👈
+👉 **[Read the Full API Reference](https://github.com/Barbatos-Labs/Barbatos.i18n/blob/main/API-REFERENCE.md)** 👈
 
 In the full reference, you will find comprehensive documentation for:
 - `LocalizationBuilder`, `LocalizationSet`, `LocalizationKey`
@@ -677,10 +693,10 @@ In the full reference, you will find comprehensive documentation for:
 
 ### Support
 
-For support, please open a [GitHub issue](https://github.com/StHung/Barbatos.i18n/issues/new). We welcome bug reports, feature requests, and questions.
+For support, please open a [GitHub issue](https://github.com/Barbatos-Labs/Barbatos.i18n/issues/new). We welcome bug reports, feature requests, and questions.
 
 ### License
 
-This project is licensed under the terms of the **MIT** open source license. Please refer to the [LICENSE](https://github.com/StHung/Barbatos.i18n/blob/main/LICENSE.md) file for the full terms.
+This project is licensed under the terms of the **MIT** open source license. Please refer to the [LICENSE](https://github.com/Barbatos-Labs/Barbatos.i18n/blob/main/LICENSE.md) file for the full terms.
 
 You can use it in private and commercial projects. Keep in mind that you must include a copy of the license in your project.

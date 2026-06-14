@@ -28,7 +28,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (value != null)
         {
-            MauiLocalization.GetProvider()?.SetCulture(value);
+            MauiLocalization.GetCultureManager()?.SetCulture(value);
 
             // Force property refresh for culture-sensitive bindings
             OnPropertyChanged(nameof(CurrentDate));

@@ -66,7 +66,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
                 ?? string.Empty;
         }
 
-        return string.Format(culture, localizedString, count);
+        return string.Format(CultureInfo.CurrentCulture, localizedString, count);
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)

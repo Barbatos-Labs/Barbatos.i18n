@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
+    <Version>1.1.1</Version>
+    <AssemblyVersion>1.1.1</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -12,8 +12,8 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>(c) 2026 Pham The Hung and Barbatos.i18n Contributors. All rights reserved.</Copyright>
     <Description>A modular and extensible cross-platform localization (i18n) ecosystem for .NET (MAUI, WPF, WebApi, etc.). Independently evolved from lepoco.i18n, it features seamless Dependency Injection support and robust data providers for JSON, CSV, INI, YAML, and Resx formats, enabling dynamic, real-time translations.</Description>
-    <PackageProjectUrl>https://github.com/StHung/Barbatos.i18n</PackageProjectUrl>
-    <PackageReleaseNotes>https://github.com/StHung/Barbatos.i18n/releases</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/Barbatos-Labs/Barbatos.i18n</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/Barbatos-Labs/Barbatos.i18n/releases</PackageReleaseNotes>
     <PackageIcon>Icon.png</PackageIcon>
   </PropertyGroup>
 

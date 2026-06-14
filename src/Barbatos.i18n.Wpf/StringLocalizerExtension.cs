@@ -210,7 +210,7 @@ public class StringLocalizerExtension : MarkupExtension
             args.Add(Arg5);
         }
 
-        string result = localizationSet.Format(currentCulture, Text, args?.ToArray() ?? null);
+        string result = localizationSet.Format(CultureInfo.CurrentCulture, Text, args?.ToArray() ?? null);
         if (StringFormat is not null)
         {
             return string.Format(StringFormat, result);

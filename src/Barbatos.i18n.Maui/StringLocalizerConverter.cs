@@ -60,7 +60,7 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             return StringLocalizerExtension.EscapeText(Text);
         }
 
-        return localizationSet.Format(culture, (LocalizationKey)Text, values) ?? StringLocalizerExtension.EscapeText(Text);
+        return localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)Text, values) ?? StringLocalizerExtension.EscapeText(Text);
     }
 
     /// <summary>

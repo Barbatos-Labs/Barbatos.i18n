@@ -41,7 +41,7 @@ Contains the core primitives used to fetch, manage, and build localization sets.
 
 ### `LocalizationBuilder` Class
 
-Provides functionality to build a collection of localized strings for different cultures. 
+Provides functionality to build a collection of localized strings for different cultures. It acts as a central registry that aggregates translations from various file formats (JSON, YAML, CSV, INI, RESX) before compiling them into a unified `LocalizationProvider`. Internally, it prevents duplicate registrations for the same culture and namespace using a `HashSet<LocalizationSet>`.
 
 ```csharp
 public class LocalizationBuilder
@@ -50,7 +50,7 @@ public class LocalizationBuilder
 #### Methods
 
 - **`AddLocalization(LocalizationSet localization)`**
-  Manually adds a predefined `LocalizationSet` to the builder.
+  Manually adds a predefined `LocalizationSet` to the builder. Throws an `InvalidOperationException` if a set with the exact same `Name` and `Culture` is already registered.
 
 - **`FromResource<TResource>(CultureInfo culture)`**
   Extracts localized strings from an embedded `.resx` resource inside the assembly containing `TResource` and registers them for the given `culture`.
@@ -64,13 +64,16 @@ public class LocalizationBuilder
 - **`SetCulture(CultureInfo culture)`**
   Sets the default fallback culture for the provider being built.
 
+- **`Build()`**
+  Instantiates and returns the final `ILocalizationProvider` using the registered localization sets and the selected fallback culture.
+
 *(Note: Extension methods like `FromJson`, `FromIni`, `FromCsv` are provided via their respective NuGet packages.)*
 
 ---
 
 ### `LocalizationSet` Class (record)
 
-Represents a set of localized strings for a specific culture.
+Represents an **immutable** set of localized strings for a specific culture. Being an immutable `record` ensures that translations cannot be altered at runtime after they are loaded, making the library thread-safe.
 
 ```csharp
 public record LocalizationSet(string? Name, CultureInfo Culture, IEnumerable<KeyValuePair<LocalizationKey, string?>> Strings)
@@ -78,36 +81,81 @@ public record LocalizationSet(string? Name, CultureInfo Culture, IEnumerable<Key
 
 #### Properties
 
-- **`Name`** (`string?`): The name/namespace of the localization set.
-- **`Culture`** (`CultureInfo`): The culture that the localized strings are for.
-- **`Strings`** (`IEnumerable<...>`): The raw key-value pairs in this set.
+- **`Name`** (`string?`): The name or namespace of the localization set. Used to group or isolate keys (e.g., `errors`, `common`).
+- **`Culture`** (`CultureInfo`): The exact culture that the localized strings in this set belong to.
+- **`Strings`** (`IEnumerable<KeyValuePair<LocalizationKey, string?>>`): The raw key-value pairs stored in this set.
 
 #### Indexers
 
 - **`this[LocalizationKey key]`**
-  Retrieves the string value for the given key. Returns `null` if not found.
+  Retrieves the raw string value for the given key. Returns `null` if the key is not found within this specific set.
+  
 - **`this[LocalizationKey key, params object[] arguments]`**
-  Retrieves and formats the string value for the given key using the provided arguments.
+  An extremely convenient indexer that retrieves the string value and immediately formats it using the set's inherent `Culture`. If the string is `Hello {0}` and `arguments` contains `"John"`, it evaluates to `"Hello John"`.
 
 #### Methods
 
 - **`Format(LocalizationKey key, params object?[]? args)`**
-  Retrieves the string by key and applies `string.Format` using the set's `Culture`.
+  Retrieves the string by key and applies standard `string.Format` using the set's `Culture`. If `args` is null or empty, it returns the raw unformatted string.
+  
 - **`Format(IFormatProvider? formatProvider, LocalizationKey key, params object?[]? args)`**
-  Retrieves the string by key and applies `string.Format` using a custom `IFormatProvider`.
+  Retrieves the string by key and applies `string.Format` using the provided custom `IFormatProvider`.
 
 ---
 
 ### `LocalizationKey` Struct
 
-Represents a normalized key used for localization string lookups. Automatically converts colons (`:`) to dots (`.`) and transforms text to lowercase to ensure unified path access.
+Represents a strictly normalized key used for all localization string lookups. It is designed as a `readonly struct` to eliminate unnecessary heap allocations during dictionary/array lookups, boosting performance.
 
 ```csharp
 public readonly struct LocalizationKey : IEquatable<LocalizationKey>
 ```
 
 #### Remarks
-This struct provides implicit conversions from and to `string`. Therefore, you can pass regular string keys (e.g. `"General:Error"`) to any method expecting a `LocalizationKey`, and it will automatically be normalized to `"general.error"`.
+
+The struct enforces **automatic normalization** upon initialization:
+1. It automatically converts all colons (`:`) to dots (`.`).
+2. It transforms the entire string to lowercase (`ToLowerInvariant()`).
+
+This means a key requested as `"Header:Title"` or `"header.TITLE"` will internally evaluate to the exact same `"header.title"`. 
+
+The struct also implements **implicit conversions** from and to `string`. This allows developers to pass regular strings seamlessly to any method expecting a `LocalizationKey`.
+
+```csharp
+// Implicitly converted to LocalizationKey and normalized to "general.error"
+string message = localizer["General:Error"]; 
+```
+
+---
+
+### `LocalizationCultureManager` Class
+
+The default implementation of `ILocalizationCultureManager`. It acts as the "orchestrator" for culture switching. It is responsible not only for notifying providers but also for managing the actual .NET OS Thread cultures.
+
+```csharp
+public class LocalizationCultureManager : ILocalizationCultureManager
+```
+
+#### Remarks
+
+When `SetCulture(CultureInfo culture)` is called, the manager performs several critical tasks:
+1. Notifies the underlying static `LocalizationProviderFactory` to update the translation lookup culture.
+2. Updates `CultureInfo.CurrentUICulture` and `CultureInfo.DefaultThreadCurrentUICulture` so standard .NET UI resources are aligned.
+3. Updates `CultureInfo.CurrentCulture` (affecting numbers, dates, and currencies) to align with the new language. If `LocalizationOptions.FormatCultureBuilder` is provided, the culture is passed through the builder for customization before applying.
+
+---
+
+### `LocalizationProvider` Class
+
+The default implementation of `ILocalizationProvider`. It acts as the live runtime container that holds all the instantiated `LocalizationSet`s.
+
+```csharp
+public class LocalizationProvider : ILocalizationProvider
+```
+
+#### Remarks
+
+Once the `LocalizationBuilder` finishes parsing files, it generates a `LocalizationProvider`. This provider is then queried by the XAML extensions (like `{i18n:StringLocalizer}`) or the `ICompositeStringLocalizer` in C# to resolve the most appropriate `LocalizationSet` for the active culture.
 
 ---
 
@@ -144,7 +192,7 @@ public interface ILocalizationCultureManager
 
 #### Properties
 
-- **`Options`** (`LocalizationOptions`): Gets the global localization options (such as whether `SyncFormattingCulture` is enabled).
+- **`Options`** (`LocalizationOptions`): Gets the global localization options (such as `FormatCultureBuilder`).
 
 #### Methods
 
@@ -170,10 +218,13 @@ Provides integration with `Microsoft.Extensions.DependencyInjection`.
 
 ### Extension Methods
 
-- **`AddStringLocalizer(this IServiceCollection services, Action<LocalizationOptions> optionsAction, Action<LocalizationBuilder> builderAction)`**
+- **`ConfigureLocalizationOptions(this IServiceCollection services, Action<LocalizationOptions> configureOptions)`**
+  Configures the global localization options.
+
+- **`AddStringLocalizer(this IServiceCollection services, Action<LocalizationBuilder> builderAction)`**
   Registers the default localization provider and `IStringLocalizer` implementations into the DI container.
 
-- **`AddStringLocalizer(this IServiceCollection services, string providerKey, Action<LocalizationOptions> optionsAction, Action<LocalizationBuilder> builderAction)`**
+- **`AddStringLocalizer(this IServiceCollection services, string providerKey, Action<LocalizationBuilder> builderAction)`**
   Registers a secondary, named localization provider into the DI container. Use this to configure Multiple Providers.
 
 ---
@@ -298,7 +349,7 @@ Provides XAML elements to bind localized strings dynamically in .NET MAUI applic
 
 ### Extension Methods
 
-- **`UseStringLocalizer(this MauiAppBuilder builder, Action<LocalizationOptions>? optionsAction, Action<LocalizationBuilder> builderAction)`**
+- **`UseStringLocalizer(this MauiAppBuilder builder, Action<LocalizationBuilder> builderAction)`**
   Registers the localization provider into the `MauiAppBuilder`'s service collection.
 
 - **`UseMauiLocalization(this MauiApp app)`**

@@ -144,7 +144,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
                 ?? string.Empty;
         }
 
-        string result = Prepare(currentCulture, localizedString, Count ?? 0);
+        string result = Prepare(CultureInfo.CurrentCulture, localizedString, Count ?? 0);
         if (StringFormat is not null)
         {
             return string.Format(StringFormat, result);

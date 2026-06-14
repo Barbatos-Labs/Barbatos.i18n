@@ -11,11 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 // Register Localization using Barbatos.i18n
-builder.Services.AddStringLocalizer(options =>
-{
-    // Use true if you want string.Format to use the active localization culture
-    options.SyncFormattingCulture = true;
-}, i18nBuilder =>
+builder.Services.AddStringLocalizer(i18nBuilder =>
 {
     var assembly = typeof(Program).Assembly;
 

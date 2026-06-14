@@ -25,11 +25,20 @@ public partial class App : Application
 
         var services = new ServiceCollection();
 
+        // Configure Options (Optional)
+        //services.ConfigureLocalizationOptions(options =>
+        //{
+        //    options.FormatCultureBuilder = uiCulture =>
+        //    {
+        //        uiCulture.NumberFormat.CurrencySymbol = "đ";
+        //        uiCulture.NumberFormat.CurrencyPositivePattern = 3;
+        //        uiCulture.NumberFormat.CurrencyNegativePattern = 8;
+        //        return uiCulture;
+        //    };
+        //});
+
         // Default Provider
-        services.AddStringLocalizer(options => 
-        {
-            options.SyncFormattingCulture = false;
-        }, builder =>
+        services.AddStringLocalizer(builder =>
         {
             builder.FromIni("Locales.en-US.ini", new CultureInfo("en-US"));
             builder.FromIni("Locales.vi-VN.ini", new CultureInfo("vi-VN"));

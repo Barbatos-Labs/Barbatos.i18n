@@ -3,8 +3,6 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
-using System.Globalization;
-
 namespace Barbatos.i18n.DependencyInjection;
 
 /// <summary>
@@ -33,19 +31,23 @@ public class DependencyInjectionLocalizationCultureManager : ILocalizationCultur
     /// <inheritdoc />
     public void SetCulture(CultureInfo culture)
     {
-        foreach (var provider in _resolver.GetAllProviders())
+        if (culture == null)
+            throw new ArgumentNullException(nameof(culture));
+
+        CultureInfo targetCulture = culture;
+        if (Options.FormatCultureBuilder is not null)
         {
-            provider.SetCulture(culture);
+            targetCulture = Options.FormatCultureBuilder.Invoke((CultureInfo)culture.Clone()) ?? culture;
         }
 
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
+        CultureInfo.CurrentCulture = targetCulture;
+        CultureInfo.DefaultThreadCurrentCulture = targetCulture;
 
-        if (Options.SyncFormattingCulture)
+        foreach (var provider in _resolver.GetAllProviders())
         {
-            CultureInfo targetCulture = Options.CustomFormattingCultureBuilder?.Invoke(culture) ?? culture;
-            CultureInfo.CurrentCulture = targetCulture;
-            CultureInfo.DefaultThreadCurrentCulture = targetCulture;
+            provider.SetCulture(culture);
         }
     }
 

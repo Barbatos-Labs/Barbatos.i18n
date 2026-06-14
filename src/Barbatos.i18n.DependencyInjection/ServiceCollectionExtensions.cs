@@ -26,19 +26,33 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the string localizer and related services to the specified <see cref="IServiceCollection"/> as the default provider with options.
+    /// Configures the global localization options.
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
     /// <param name="configureOptions">A delegate to configure localization options.</param>
-    /// <param name="configure">A delegate to configure the localization builder.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
-    public static IServiceCollection AddStringLocalizer(
+    public static IServiceCollection ConfigureLocalizationOptions(
         this IServiceCollection services,
-        Action<LocalizationOptions> configureOptions,
-        Action<LocalizationBuilder> configure
+        Action<LocalizationOptions> configureOptions
     )
     {
-        return services.AddStringLocalizer((string?)null, configureOptions, configure);
+        var optionsDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(LocalizationOptions));
+        LocalizationOptions options;
+
+        if (optionsDescriptor != null)
+        {
+            options = (LocalizationOptions)optionsDescriptor.ImplementationInstance!;
+            services.Remove(optionsDescriptor);
+        }
+        else
+        {
+            options = new LocalizationOptions();
+        }
+
+        configureOptions(options);
+        services.AddSingleton(options);
+        
+        return services;
     }
 
     /// <summary>
@@ -54,29 +68,10 @@ public static class ServiceCollectionExtensions
         Action<LocalizationBuilder> configure
     )
     {
-        return services.AddStringLocalizer(providerKey, null, configure);
-    }
-
-    /// <summary>
-    /// Adds the string localizer and related services to the specified <see cref="IServiceCollection"/> with a specific provider key and options.
-    /// </summary>
-    /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
-    /// <param name="providerKey">The key to associate with the provider. If null, it becomes the default provider.</param>
-    /// <param name="configureOptions">A delegate to configure localization options.</param>
-    /// <param name="configure">A delegate to configure the localization builder.</param>
-    /// <returns>The same service collection so that multiple calls can be chained.</returns>
-    public static IServiceCollection AddStringLocalizer(
-        this IServiceCollection services,
-        string? providerKey,
-        Action<LocalizationOptions>? configureOptions,
-        Action<LocalizationBuilder> configure
-    )
-    {
-        var options = new LocalizationOptions();
-        configureOptions?.Invoke(options);
-
-        // Register options
-        services.AddSingleton(options);
+        if (!services.Any(d => d.ServiceType == typeof(LocalizationOptions)))
+        {
+            services.AddSingleton(new LocalizationOptions());
+        }
 
         DependencyInjectionLocalizationBuilder builder = new(services);
 

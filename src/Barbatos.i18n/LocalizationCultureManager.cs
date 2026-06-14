@@ -28,17 +28,21 @@ public class LocalizationCultureManager : ILocalizationCultureManager
     /// <inheritdoc />
     public void SetCulture(CultureInfo culture)
     {
-        LocalizationProviderFactory.GetInstance()?.SetCulture(culture);
+        if (culture == null)
+            throw new ArgumentNullException(nameof(culture));
+
+        CultureInfo targetCulture = culture;
+        if (Options.FormatCultureBuilder is not null)
+        {
+            targetCulture = Options.FormatCultureBuilder.Invoke((CultureInfo)culture.Clone()) ?? culture;
+        }
 
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
+        CultureInfo.CurrentCulture = targetCulture;
+        CultureInfo.DefaultThreadCurrentCulture = targetCulture;
 
-        if (Options.SyncFormattingCulture)
-        {
-            CultureInfo targetCulture = Options.CustomFormattingCultureBuilder?.Invoke(culture) ?? culture;
-            CultureInfo.CurrentCulture = targetCulture;
-            CultureInfo.DefaultThreadCurrentCulture = targetCulture;
-        }
+        LocalizationProviderFactory.GetInstance()?.SetCulture(culture);
     }
 
     /// <inheritdoc />

@@ -27,6 +27,8 @@
     <Project Path="tests/Barbatos.i18n.DependencyInjection.UnitTests/Barbatos.i18n.DependencyInjection.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.Ini.UnitTests/Barbatos.i18n.Ini.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.Json.UnitTests/Barbatos.i18n.Json.UnitTests.csproj" />
+    <Project Path="tests/Barbatos.i18n.Maui.UnitTests/Barbatos.i18n.Maui.UnitTests.csproj" />
     <Project Path="tests/Barbatos.i18n.UnitTests/Barbatos.i18n.UnitTests.csproj" />
+    <Project Path="tests/Barbatos.i18n.Wpf.UnitTests/Barbatos.i18n.Wpf.UnitTests.csproj" />
   </Folder>
 </Solution>
