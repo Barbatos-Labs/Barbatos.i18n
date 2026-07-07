@@ -27,11 +27,17 @@ public class PluralStringLocalizerExtension : MarkupExtension
     /// <param name="count">The count that determines whether to use the singular or plural form of the text.</param>
     /// <param name="text">The text to be localized.</param>
     /// <param name="pluralText">The plural text to be localized.</param>
-    public PluralStringLocalizerExtension(int count, string text, string pluralText)
+    public PluralStringLocalizerExtension(
+        int count,
+        string text,
+        string pluralText,
+        [CallerArgumentExpression(nameof(text))] string textExpression = "",
+        [CallerArgumentExpression(nameof(pluralText))] string pluralTextExpression = ""
+    )
     {
         Count = count;
-        Text = StringLocalizerExtension.EscapeText(text);
-        PluralText = StringLocalizerExtension.EscapeText(pluralText);
+        Text = ResolveKey(text, textExpression);
+        PluralText = ResolveKey(pluralText, pluralTextExpression);
     }
 
     /// <summary>
@@ -45,13 +51,34 @@ public class PluralStringLocalizerExtension : MarkupExtension
         int count,
         string text,
         string pluralText,
-        string namespaceName
+        string namespaceName,
+        [CallerArgumentExpression(nameof(text))] string textExpression = "",
+        [CallerArgumentExpression(nameof(pluralText))] string pluralTextExpression = ""
     )
     {
         Count = count;
-        Text = StringLocalizerExtension.EscapeText(text);
-        PluralText = StringLocalizerExtension.EscapeText(pluralText);
+        Text = ResolveKey(text, textExpression);
+        PluralText = ResolveKey(pluralText, pluralTextExpression);
         Namespace = namespaceName;
+    }
+
+    private static string? ResolveKey(string? text, string expression)
+    {
+        if (text is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expression))
+        {
+            string trimmed = expression.Trim();
+            if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
+            {
+                return trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
+            }
+        }
+
+        return StringLocalizerExtension.EscapeText(text);
     }
 
     /// <summary>

@@ -24,9 +24,9 @@ public class StringLocalizerExtension : MarkupExtension
     /// Initializes a new instance of the <see cref="StringLocalizerExtension"/> class with the specified text.
     /// </summary>
     /// <param name="text">The text to be localized.</param>
-    public StringLocalizerExtension(string? text)
+    public StringLocalizerExtension(string? text, [CallerArgumentExpression(nameof(text))] string expression = "")
     {
-        Text = EscapeText(text);
+        Text = ResolveKey(text, expression);
     }
 
     /// <summary>
@@ -34,10 +34,29 @@ public class StringLocalizerExtension : MarkupExtension
     /// </summary>
     /// <param name="text">The text to be localized.</param>
     /// <param name="textNamespace">The namespace of the text to be localized.</param>
-    public StringLocalizerExtension(string? text, string? textNamespace)
+    public StringLocalizerExtension(string? text, string? textNamespace, [CallerArgumentExpression(nameof(text))] string expression = "")
     {
-        Text = EscapeText(text);
+        Text = ResolveKey(text, expression);
         Namespace = textNamespace;
+    }
+
+    private static string? ResolveKey(string? text, string expression)
+    {
+        if (text is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expression))
+        {
+            string trimmed = expression.Trim();
+            if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
+            {
+                return trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
+            }
+        }
+
+        return EscapeText(text);
     }
 
     /// <summary>
@@ -211,6 +230,13 @@ public class StringLocalizerExtension : MarkupExtension
         }
 
         string result = localizationSet.Format(CultureInfo.CurrentCulture, Text, args?.ToArray() ?? null);
+        try
+        {
+            var logPath = @"C:\Users\NC\Desktop\i18n_debug.txt";
+            var keys = string.Join(", ", localizationSet.Strings.Select(x => $"{x.Key.ToString()}={x.Value}"));
+            System.IO.File.AppendAllText(logPath, $"Text={Text}, Namespace={Namespace}, SetName={localizationSet.Name}, Culture={localizationSet.Culture}, Keys=[{keys}], Result={result}\r\n");
+        }
+        catch {}
         if (StringFormat is not null)
         {
             return string.Format(StringFormat, result);

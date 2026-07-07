@@ -6,9 +6,9 @@
 global using System;
 global using System.Collections.Generic;
 global using System.Globalization;
+global using System.Runtime.CompilerServices;
 global using System.Linq;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Maui.Controls;
 global using Microsoft.Maui.Controls.Xaml;
 global using Microsoft.Maui.Hosting;
-global using Barbatos.i18n;

@@ -3,6 +3,8 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
+using System.Runtime.CompilerServices;
+
 namespace Barbatos.i18n;
 
 /// <summary>
@@ -17,10 +19,48 @@ public record LocalizationSet(
     IEnumerable<KeyValuePair<LocalizationKey, string?>> Strings
 )
 {
+    /// <summary>
+    /// Gets the localized value for the specified string, optionally extracting the property name from a property expression (e.g., <c>TestResource.Test</c>).
+    /// </summary>
+    public string? this[string? value, [CallerArgumentExpression(nameof(value))] string expression = ""]
+    {
+        get
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(expression))
+            {
+                string trimmed = expression.Trim();
+                if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
+                {
+                    string propertyName = trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
+                    if (this[new LocalizationKey(propertyName)] is string result)
+                    {
+                        return result;
+                    }
+                }
+            }
+
+            return this[new LocalizationKey(value)];
+        }
+    }
+
     public string? this[LocalizationKey key]
     {
         get
         {
+            if (Strings is IReadOnlyDictionary<LocalizationKey, string?> readOnlyDict)
+            {
+                return readOnlyDict.TryGetValue(key, out string? value) ? value : null;
+            }
+            if (Strings is IDictionary<LocalizationKey, string?> dict)
+            {
+                return dict.TryGetValue(key, out string? value) ? value : null;
+            }
+
             foreach (KeyValuePair<LocalizationKey, string?> localizationString in Strings)
             {
                 if (localizationString.Key == key)

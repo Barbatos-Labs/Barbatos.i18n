@@ -7,4 +7,8 @@ namespace Barbatos.i18n.Sample.Wpf.Locales;
 
 public class Strings
 {
+    /// <summary>
+    /// Returns the key name "Test" for use with XAML markup extensions.
+    /// </summary>
+    public static string Test => nameof(Test);
 }

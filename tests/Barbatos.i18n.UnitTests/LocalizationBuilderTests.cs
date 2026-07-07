@@ -140,4 +140,32 @@ public sealed class LocalizationBuilderTests
         Action act = () => builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key2", "val2" } });
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void FromResource_ShouldAllowLookupUsingTestResourcePropertyDirectly()
+    {
+        LocalizationBuilder builder = new();
+
+        builder.FromResource<TestResource>(new CultureInfo("ko-KR"));
+
+        ILocalizationProvider provider = builder.Build();
+
+        provider.SetCulture(new CultureInfo("ko-KR"));
+        LocalizationSet? localizationSet = provider.GetLocalizationSet("ko-KR");
+
+        localizationSet.Should().NotBeNull();
+
+        // 1. Direct property lookup: TestResource.Test evaluates to "hello" (default value) at runtime,
+        // but the CallerArgumentExpression captures "TestResource.Test" at compile-time and extracts "Test".
+        localizationSet![TestResource.Test].Should().Be("안녕하세요");
+
+        // 2. Nameof lookup: nameof(TestResource.Test) evaluates to "Test", which works.
+        localizationSet![nameof(TestResource.Test)].Should().Be("안녕하세요");
+
+        // 3. String literal lookup: "Test" works.
+        localizationSet!["Test"].Should().Be("안녕하세요");
+
+        // 4. Default value lookup (for XAML): "hello" (the default culture translation) works.
+        localizationSet!["hello"].Should().Be("안녕하세요");
+    }
 }

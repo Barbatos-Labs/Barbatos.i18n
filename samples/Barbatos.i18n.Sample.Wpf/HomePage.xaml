@@ -4,6 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:i18n="http://schemas.barbatos.co/i18n/2026/xaml"
+      xmlns:locales="clr-namespace:Barbatos.i18n.Sample.Wpf.Locales"
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="600"
       Title="HomePage">
@@ -15,6 +16,8 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
         <StackPanel Margin="20" HorizontalAlignment="Stretch" MaxWidth="600" VerticalAlignment="Top">
             <TextBlock Text="{i18n:StringLocalizer Text='Title'}" FontWeight="Bold" FontSize="22" Margin="0,0,0,20" HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="{i18n:StringLocalizer Text={x:Static locales:Strings.Test}, Namespace='Barbatos.i18n.Sample.Wpf.Locales.Strings'}" FontWeight="Bold" FontSize="22" Margin="0,0,0,20" HorizontalAlignment="Center"/>
 
             <Button Command="{Binding ShowMessageCommand}" Content="Show Localized MessageBox" Width="250" Padding="10" Margin="0,0,0,30" HorizontalAlignment="Center" Cursor="Hand" Background="#0078D7" Foreground="White" FontWeight="Bold" BorderThickness="0" />
 

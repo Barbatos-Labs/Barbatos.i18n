@@ -64,4 +64,7 @@
   <data name="MessageContent" xml:space="preserve">
     <value>Barbatos.i18n에 오신 것을 환영합니다, {0}!</value>
   </data>
+  <data name="Test" xml:space="preserve">
+    <value>안녕하세요</value>
+  </data>
 </root>

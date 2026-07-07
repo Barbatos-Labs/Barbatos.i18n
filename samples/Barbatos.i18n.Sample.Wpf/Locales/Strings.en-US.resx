@@ -64,4 +64,7 @@
   <data name="MessageContent" xml:space="preserve">
     <value>Welcome to Barbatos.i18n, {0}!</value>
   </data>
+  <data name="Test" xml:space="preserve">
+    <value>Test in english</value>
+  </data>
 </root>
