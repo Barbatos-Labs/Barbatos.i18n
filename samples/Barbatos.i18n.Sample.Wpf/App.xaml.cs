@@ -54,10 +54,10 @@ public partial class App : Application
             builder.FromJson("Locales.Validation-vi-VN.json", new CultureInfo("vi-VN"));
             builder.FromJson("Locales.Validation-ko-KR.json", new CultureInfo("ko-KR"));
 
-            // Load from RESX
-            builder.FromResource<Locales.Strings>(new CultureInfo("en-US"));
-            builder.FromResource<Locales.Strings>(new CultureInfo("vi-VN"));
-            builder.FromResource<Locales.Strings>(new CultureInfo("ko-KR"));
+            // Load from RESX — registered under the short name "Strings" for clean XAML usage
+            builder.FromResource<Locales.Strings>(new CultureInfo("en-US"), nameof(Locales.Strings));
+            builder.FromResource<Locales.Strings>(new CultureInfo("vi-VN"), nameof(Locales.Strings));
+            builder.FromResource<Locales.Strings>(new CultureInfo("ko-KR"), nameof(Locales.Strings));
 
             // Load Errors namespace
             builder.FromCsv("Locales.Errors.csv");

@@ -17,7 +17,7 @@
         <StackPanel Margin="20" HorizontalAlignment="Stretch" MaxWidth="600" VerticalAlignment="Top">
             <TextBlock Text="{i18n:StringLocalizer Text='Title'}" FontWeight="Bold" FontSize="22" Margin="0,0,0,20" HorizontalAlignment="Center"/>
             
-            <TextBlock Text="{i18n:StringLocalizer Text={x:Static locales:Strings.Test}, Namespace='Barbatos.i18n.Sample.Wpf.Locales.Strings'}" FontWeight="Bold" FontSize="22" Margin="0,0,0,20" HorizontalAlignment="Center"/>
+            <TextBlock Text="{i18n:StringLocalizer {x:Static locales:Strings.Test}, Namespace='Strings'}" FontWeight="Bold" FontSize="22" Margin="0,0,0,20" HorizontalAlignment="Center"/>
 
             <Button Command="{Binding ShowMessageCommand}" Content="Show Localized MessageBox" Width="250" Padding="10" Margin="0,0,0,30" HorizontalAlignment="Center" Cursor="Hand" Background="#0078D7" Foreground="White" FontWeight="Bold" BorderThickness="0" />
 

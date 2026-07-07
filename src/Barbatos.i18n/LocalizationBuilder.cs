@@ -63,9 +63,7 @@ public class LocalizationBuilder
     /// Adds localized strings from a resource in the calling assembly to the <see cref="LocalizationBuilder"/>.
     /// </summary>
     /// <typeparam name="TResource">The type of the resource.</typeparam>
-    /// <param name="builder">The <see cref="LocalizationBuilder"/> to add the localized strings to.</param>
     /// <param name="culture">The culture for which the localized strings are provided.</param>
-    /// <returns>The <see cref="LocalizationBuilder"/> with the added localized strings.</returns>
     public virtual void FromResource<TResource>(CultureInfo culture)
     {
         Type resourceType = typeof(TResource);
@@ -77,6 +75,38 @@ public class LocalizationBuilder
         }
 
         FromResource(resourceType.Assembly, resourceName, culture);
+    }
+
+    /// <summary>
+    /// Adds localized strings from a resource in the calling assembly to the <see cref="LocalizationBuilder"/>
+    /// and registers them under a custom <paramref name="name"/> instead of the default fully-qualified type name.
+    /// </summary>
+    /// <typeparam name="TResource">The type of the resource.</typeparam>
+    /// <param name="culture">The culture for which the localized strings are provided.</param>
+    /// <param name="name">
+    /// The namespace name to register this localization set under (e.g. <c>nameof(Strings)</c> → <c>"Strings"</c>).
+    /// Use this to avoid hardcoding the full type name in XAML <c>Namespace</c> arguments.
+    /// </param>
+    public virtual void FromResource<TResource>(CultureInfo culture, string name)
+    {
+        Type resourceType = typeof(TResource);
+        string? resourceName = resourceType.FullName;
+
+        if (resourceName is null)
+        {
+            return;
+        }
+
+        LocalizationSet? localizationSet = IO.LocalizationSetResourceParser.Parse(
+            resourceType.Assembly,
+            resourceName,
+            culture
+        );
+
+        if (localizationSet is not null)
+        {
+            AddLocalization(localizationSet with { Name = name.ToLowerInvariant() });
+        }
     }
 
     /// <summary>

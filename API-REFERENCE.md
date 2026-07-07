@@ -53,7 +53,15 @@ public class LocalizationBuilder
   Manually adds a predefined `LocalizationSet` to the builder. Throws an `InvalidOperationException` if a set with the exact same `Name` and `Culture` is already registered.
 
 - **`FromResource<TResource>(CultureInfo culture)`**
-  Extracts localized strings from an embedded `.resx` resource inside the assembly containing `TResource` and registers them for the given `culture`.
+  Extracts localized strings from an embedded `.resx` resource inside the assembly containing `TResource` and registers them for the given `culture`. The set name defaults to the **fully-qualified type name** (e.g. `MyApp.Locales.Strings`).
+
+- **`FromResource<TResource>(CultureInfo culture, string name)`**
+  Same as above, but registers the set under a custom **short name** instead of the full type name. Use `nameof(Locales.Strings)` to get a clean, short identifier that can be referenced as `Namespace='Strings'` in XAML without hardcoding the full namespace string.
+
+  ```csharp
+  // Registered as "strings" (normalized), referenced in XAML as Namespace='Strings'
+  builder.FromResource<Locales.Strings>(new CultureInfo("en-US"), nameof(Locales.Strings));
+  ```
 
 - **`FromResource(Assembly assembly, string baseName, CultureInfo culture)`**
   Extracts localized strings from an embedded `.resx` resource using the specified assembly and base name.
@@ -86,6 +94,17 @@ public record LocalizationSet(string? Name, CultureInfo Culture, IEnumerable<Key
 - **`Strings`** (`IEnumerable<KeyValuePair<LocalizationKey, string?>>`): The raw key-value pairs stored in this set.
 
 #### Indexers
+
+- **`this[string? value, [CallerArgumentExpression] string expression]`**
+  A convenience indexer that supports **strongly-typed resource class access**. When called from C# with a member expression (e.g. `set[Strings.Test]`), the `[CallerArgumentExpression]` attribute automatically captures the expression `"Strings.Test"` and extracts the property name `"Test"` as the lookup key. If the expression is a plain string literal, it falls back to using the value directly.
+
+  ```csharp
+  // CallerArgumentExpression extracts "Test" from the expression "Strings.Test"
+  string? translated = localizationSet[Strings.Test];
+  
+  // Equivalent to:
+  string? translated = localizationSet[new LocalizationKey("Test")];
+  ```
 
 - **`this[LocalizationKey key]`**
   Retrieves the raw string value for the given key. Returns `null` if the key is not found within this specific set.
@@ -277,6 +296,18 @@ The primary way to retrieve localized strings in XAML. Inherits from `MarkupExte
 <TextBlock Text="{i18n:StringLocalizer Text='Key', BindArg={Binding Value}}" />
 ```
 
+#### Constructors
+
+| Constructor | Description |
+|-------------|-------------|
+| `StringLocalizerExtension()` | Default constructor for XAML property-based usage. |
+| `StringLocalizerExtension(string? text)` | Sets `Text` from a string literal or `{x:Static}` expression. Supports `CallerArgumentExpression`. |
+| `StringLocalizerExtension(string? text, string? textNamespace)` | Sets `Text` and `Namespace`. Use with `{x:Static}` for both arguments for strongly-typed access. |
+
+> [!NOTE]
+> **XAML vs C# behavior of constructors:**
+> When called from **XAML** with `{x:Static}`, the property's runtime value is passed to the constructor. Therefore, resource properties must return `nameof(PropertyName)` to act as the key. When called from **C# code-behind**, `[CallerArgumentExpression]` automatically captures the member expression (e.g. `"Strings.Test"`) and extracts `"Test"` as the key, even if the property returns a different runtime value.
+
 #### Properties
 
 | Property | Type | Description |
@@ -430,3 +461,77 @@ Used when the CSV file contains multiple languages (e.g. columns for `en-US`, `v
 - **`FromCsv(this LocalizationBuilder builder, string path)`**
 - **`FromCsv(this LocalizationBuilder builder, Assembly assembly, string path)`**
 - **`FromCsvString(this LocalizationBuilder builder, string name, string? contents)`**
+
+---
+
+## Patterns & Conventions
+
+### Strongly-Typed Resource Keys
+
+A recommended pattern for achieving **compile-time key safety** and **refactoring support** in both XAML and C# code.
+
+#### The `Strings` Class Convention
+
+Create a companion C# class that mirrors your `.resx` file structure. Each property returns its own name via `nameof`. No constants needed.
+
+```csharp
+namespace MyApp.Locales;
+
+public class Strings
+{
+    // Each property returns nameof(itself) — the key name, not the translated value.
+    public static string Title => nameof(Title);
+    public static string Greeting => nameof(Greeting);
+    public static string MessageContent => nameof(MessageContent);
+}
+```
+
+#### Registration with Short Name
+
+Use the `FromResource<TResource>(CultureInfo, string name)` overload with `nameof()` to register the set under a short, clean identifier:
+
+```csharp
+// nameof(Locales.Strings) → "Strings" — no hardcoded strings
+builder.FromResource<Locales.Strings>(new CultureInfo("en-US"), nameof(Locales.Strings));
+builder.FromResource<Locales.Strings>(new CultureInfo("vi-VN"), nameof(Locales.Strings));
+builder.FromResource<Locales.Strings>(new CultureInfo("ko-KR"), nameof(Locales.Strings));
+```
+
+#### Usage in XAML (WPF & MAUI)
+
+Declare the CLR namespace and use `{x:Static}` for key arguments. Use the short `Namespace='Strings'` literal:
+
+```xml
+xmlns:locales="clr-namespace:MyApp.Locales"
+
+<!-- key from {x:Static}, short Namespace literal -->
+<TextBlock Text="{i18n:StringLocalizer {x:Static locales:Strings.Title}, Namespace='Strings'}" />
+<TextBlock Text="{i18n:StringLocalizer {x:Static locales:Strings.Greeting}, Namespace='Strings'}" />
+
+<!-- Property-based syntax (equivalent) -->
+<TextBlock Text="{i18n:StringLocalizer Text={x:Static locales:Strings.Title}, Namespace='Strings'}" />
+```
+
+#### Usage in C# Code-Behind
+
+Thanks to `[CallerArgumentExpression]`, you can pass the property expression directly — the library automatically extracts the key name from the expression at compile time:
+
+```csharp
+// Passes "Strings.Title" as expression → extracts key "Title"
+string title = localizer[Strings.Title];
+
+// Also works with LocalizationSet indexer directly
+string title = localizationSet[Strings.Title];
+```
+
+#### How the Set Name Is Derived
+
+| Registration call | Registered set name |
+|-------------------|---------------------|
+| `FromResource<Strings>(culture)` | `myapp.locales.strings` (full type name, lowercased) |
+| `FromResource<Strings>(culture, nameof(Locales.Strings))` | `strings` (short name, lowercased) |
+
+The `Namespace` lookup in `StringLocalizerExtension` performs a **case-insensitive** comparison, so `Namespace='Strings'` correctly matches the registered set `"strings"`.
+
+> [!TIP]
+> For each `.resx` file in your project, create a corresponding `Strings.cs` companion class. Add every resource key as a `static string` property returning `nameof(...)`. Register with `nameof(Locales.Strings)` for the short name. This gives you full IntelliSense, refactoring support, and zero magic strings in your XAML.

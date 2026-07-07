@@ -29,6 +29,7 @@
   * [String Formatting & Culture](#string-formatting--culture)
   * [Namespaces](#namespaces)
   * [Multiple Providers](#multiple-providers)
+  * [Strongly-Typed Resource Keys (x:Static)](#strongly-typed-resource-keys-xstatic)
 * **[Ecosystem](#ecosystem)**
   * [Packages](#packages)
 * **[API Reference](#api-reference)**
@@ -413,6 +414,58 @@ If you segmented your translations using namespaces or multiple provider keys du
 <TextBlock Text="{i18n:StringLocalizer Text='BonusMessage', ProviderKey='SecondaryProvider', Namespace='extra'}" />
 ```
 
+#### Strongly-Typed Resource Keys (`x:Static`)
+
+Instead of using raw string literals for keys (e.g., `Text='Test'`), you can use **strongly-typed resource classes** to get compile-time safety and refactoring support in XAML.
+
+**The pattern:**
+1. Each property in your resource class returns `nameof(PropertyName)` — the **key name** string.
+2. During registration, pass a **short name** (e.g. `nameof(Locales.Strings)`) to give the set a clean, short identifier.
+3. XAML uses `{x:Static}` for keys and a short `Namespace='Strings'` literal — no magic long strings.
+
+**Resource class (`Locales/Strings.cs`):**
+```csharp
+public class Strings
+{
+    // Each property returns nameof(itself) — the key name, not the translated value.
+    public static string Title => nameof(Title);
+    public static string Greeting => nameof(Greeting);
+    public static string Test => nameof(Test);
+}
+```
+
+**Registration with short name (C#):**
+```csharp
+// nameof(Locales.Strings) → "Strings" — used as Namespace in XAML
+builder.FromResource<Locales.Strings>(new CultureInfo("en-US"), nameof(Locales.Strings));
+builder.FromResource<Locales.Strings>(new CultureInfo("vi-VN"), nameof(Locales.Strings));
+```
+
+**XAML namespace declaration:**
+```xml
+xmlns:locales="clr-namespace:MyApp.Locales"
+```
+
+**Usage in XAML:**
+```xml
+<!-- key from {x:Static}, short Namespace='Strings' literal -->
+<TextBlock Text="{i18n:StringLocalizer {x:Static locales:Strings.Title}, Namespace='Strings'}" />
+<TextBlock Text="{i18n:StringLocalizer {x:Static locales:Strings.Greeting}, Namespace='Strings'}" />
+```
+
+**Usage in C# code-behind (with `CallerArgumentExpression`):**
+```csharp
+// CallerArgumentExpression captures "Strings.Test" → extracts key "Test" automatically
+string value = localizer[Strings.Test];
+```
+
+> [!TIP]
+> **Why `nameof` and not the resource value?**  
+> `{x:Static}` evaluates the property at XAML parse time and passes its **runtime value** to the markup extension. By returning `nameof(Test)` (`"Test"`), the value is the key name itself — which the localizer then looks up. `[CallerArgumentExpression]` provides the same ergonomic experience in C# code.
+
+> [!NOTE]
+> The `name` parameter in `FromResource<TResource>(culture, name)` sets the set's identifier. It is normalized to lowercase internally, so `Namespace='Strings'` and `Namespace='strings'` both resolve correctly.
+
 #### DataTemplates & ItemsControl (`LocalizeConverter`)
 
 In scenarios like `DataTemplate` where `MarkupExtension`s cannot accept direct bindings of the template's context (e.g. `Text="{Binding}"`), you must use the `LocalizeConverter`:
@@ -682,6 +735,7 @@ In the full reference, you will find comprehensive documentation for:
 - `StringLocalizerExtension`, `PluralStringLocalizerExtension`, `LocalizeConverter`
 - `WpfLocalization` (Service Locator bridge)
 - DI Registration Extension Methods
+- Strongly-typed resource key conventions
 
 ---
 

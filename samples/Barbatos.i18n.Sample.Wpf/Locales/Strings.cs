@@ -9,6 +9,7 @@ public class Strings
 {
     /// <summary>
     /// Returns the key name "Test" for use with XAML markup extensions.
+    /// Usage: {i18n:StringLocalizer {x:Static locales:Strings.Test}, Namespace='Strings'}
     /// </summary>
     public static string Test => nameof(Test);
 }
