@@ -48,7 +48,24 @@ public class LocalizationCultureManager : ILocalizationCultureManager
     /// <inheritdoc />
     public CultureInfo GetCulture()
     {
-        return LocalizationProviderFactory.GetInstance()?.GetCulture()
-            ?? CultureInfo.CurrentCulture;
+        if (LocalizationProviderFactory.GetInstance()?.GetCulture() is { } culture)
+        {
+            return culture;
+        }
+
+        return Options.FormatCultureBuilder?.Invoke((CultureInfo)CultureInfo.CurrentCulture.Clone())
+               ?? CultureInfo.CurrentCulture;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<CultureInfo> GetSupportedCultures()
+    {
+        CultureInfo[] cultures = LocalizationProviderFactory.GetInstance()?
+            .GetLocalizationSets()
+            .Select(s => s.Culture)
+            .Distinct()
+            .ToArray() ?? [];
+
+        return cultures.Length > 0 ? cultures : ((ILocalizationCultureManager)this).GetOperatingSystemCultures();
     }
 }

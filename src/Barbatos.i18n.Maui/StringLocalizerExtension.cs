@@ -20,9 +20,9 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     /// Initializes a new instance of the <see cref="StringLocalizerExtension"/> class with the specified text.
     /// </summary>
     /// <param name="text">The text to be localized.</param>
-    public StringLocalizerExtension(string? text, [CallerArgumentExpression(nameof(text))] string expression = "")
+    public StringLocalizerExtension(string? text)
     {
-        Text = ResolveKey(text, expression);
+        Text = text;
     }
 
     /// <summary>
@@ -30,29 +30,10 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     /// </summary>
     /// <param name="text">The text to be localized.</param>
     /// <param name="textNamespace">The namespace of the text to be localized.</param>
-    public StringLocalizerExtension(string? text, string? textNamespace, [CallerArgumentExpression(nameof(text))] string expression = "")
+    public StringLocalizerExtension(string? text, string? textNamespace)
     {
-        Text = ResolveKey(text, expression);
+        Text = text;
         Namespace = textNamespace;
-    }
-
-    private static string? ResolveKey(string? text, string expression)
-    {
-        if (text is null)
-        {
-            return null;
-        }
-
-        if (!string.IsNullOrWhiteSpace(expression))
-        {
-            string trimmed = expression.Trim();
-            if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
-            {
-                return trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
-            }
-        }
-
-        return text;
     }
 
     /// <summary>

@@ -14,12 +14,8 @@ namespace Barbatos.i18n.Sample.Maui;
 
 public partial class MainViewModel : ObservableObject
 {
-    public ObservableCollection<CultureInfo> SupportedCultures { get; } = new()
-    {
-        new CultureInfo("en-US"),
-        new CultureInfo("vi-VN"),
-        new CultureInfo("ko-KR"),
-    };
+    public ObservableCollection<CultureInfo> SupportedCultures { get; } = new(
+        [..MauiLocalization.GetCultureManager()?.GetSupportedCultures() ?? [CultureInfo.CurrentCulture], new CultureInfo("zh-CN")]);
 
     [ObservableProperty]
     private CultureInfo _selectedCulture;

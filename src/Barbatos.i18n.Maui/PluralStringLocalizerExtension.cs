@@ -22,17 +22,11 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <param name="count">The count that determines whether to use the singular or plural form.</param>
     /// <param name="text">The text to be localized.</param>
     /// <param name="pluralText">The plural text to be localized.</param>
-    public PluralStringLocalizerExtension(
-        int count,
-        string text,
-        string pluralText,
-        [CallerArgumentExpression(nameof(text))] string textExpression = "",
-        [CallerArgumentExpression(nameof(pluralText))] string pluralTextExpression = ""
-    )
+    public PluralStringLocalizerExtension(int count, string text, string pluralText)
     {
         Count = count;
-        Text = ResolveKey(text, textExpression);
-        PluralText = ResolveKey(pluralText, pluralTextExpression);
+        Text = text;
+        PluralText = pluralText;
     }
 
     /// <summary>
@@ -42,38 +36,12 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <param name="text">The text to be localized.</param>
     /// <param name="pluralText">The plural text to be localized.</param>
     /// <param name="namespaceName">The namespace of the text to be localized.</param>
-    public PluralStringLocalizerExtension(
-        int count,
-        string text,
-        string pluralText,
-        string namespaceName,
-        [CallerArgumentExpression(nameof(text))] string textExpression = "",
-        [CallerArgumentExpression(nameof(pluralText))] string pluralTextExpression = ""
-    )
+    public PluralStringLocalizerExtension(int count, string text, string pluralText, string namespaceName)
     {
         Count = count;
-        Text = ResolveKey(text, textExpression);
-        PluralText = ResolveKey(pluralText, pluralTextExpression);
+        Text = text;
+        PluralText = pluralText;
         Namespace = namespaceName;
-    }
-
-    private static string? ResolveKey(string? text, string expression)
-    {
-        if (text is null)
-        {
-            return null;
-        }
-
-        if (!string.IsNullOrWhiteSpace(expression))
-        {
-            string trimmed = expression.Trim();
-            if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
-            {
-                return trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
-            }
-        }
-
-        return text;
     }
 
     /// <summary>

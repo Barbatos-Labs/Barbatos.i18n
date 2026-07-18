@@ -8,20 +8,14 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Barbatos.i18n.Wpf;
 
 namespace Barbatos.i18n.Sample.Wpf;
 
 public partial class HomeViewModel : ObservableObject
 {
-    public ObservableCollection<CultureInfo> SupportedCultures { get; } = new()
-    {
-        new CultureInfo("en-US"),
-        new CultureInfo("vi-VN"),
-        new CultureInfo("ko-KR"),
-        new CultureInfo("zh-CN") // Missing locale to test fallback
-    };
+    public ObservableCollection<CultureInfo> SupportedCultures { get; } = new(
+        [..WpfLocalization.GetCultureManager()?.GetSupportedCultures() ?? [CultureInfo.CurrentCulture], new CultureInfo("zh-CN")]);
 
     [ObservableProperty]
     private CultureInfo _selectedCulture;

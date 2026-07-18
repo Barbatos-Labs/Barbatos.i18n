@@ -118,9 +118,39 @@ public sealed class LocalizationCultureManagerTests : IDisposable
     {
         CultureInfo.CurrentCulture = new CultureInfo("zh-CN");
         var manager = new LocalizationCultureManager();
-        
+
         var culture = manager.GetCulture();
-        
+
         culture.Name.Should().Be("zh-CN");
+    }
+
+    [Fact]
+    public void GetSupportedCultures_ShouldReturnDistinctCultures_WhenProviderIsRegistered()
+    {
+        var sets = new[]
+        {
+            new LocalizationSet("Strings", new CultureInfo("en-US"), []),
+            new LocalizationSet("Errors", new CultureInfo("en-US"), []),
+            new LocalizationSet("Strings", new CultureInfo("vi-VN"), []),
+        };
+        var provider = new LocalizationProvider(new CultureInfo("en-US"), sets);
+        LocalizationProviderFactory.SetInstance(provider);
+
+        var manager = new LocalizationCultureManager();
+        var cultures = manager.GetSupportedCultures();
+
+        cultures.Select(c => c.Name).Should().BeEquivalentTo("en-US", "vi-VN");
+    }
+
+    [Fact]
+    public void GetSupportedCultures_ShouldFallBackToOperatingSystemCultures_WhenNoCulturesAreRegistered()
+    {
+        var manager = new LocalizationCultureManager();
+
+        var cultures = manager.GetSupportedCultures();
+
+        cultures.Should().Contain(c => c.Name == "en-US");
+        cultures.Should().Contain(c => c.Name == "ja-JP");
+        cultures.Should().HaveCountGreaterThan(1);
     }
 }

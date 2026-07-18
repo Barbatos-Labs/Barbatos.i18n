@@ -44,4 +44,15 @@ public static class WpfLocalization
 
         return null;
     }
+
+    /// <summary>
+    /// Gets the localization culture manager from the dependency injection container.
+    /// </summary>
+    /// <returns>The <see cref="ILocalizationCultureManager"/> if found; otherwise, null.</returns>
+    public static ILocalizationCultureManager? GetCultureManager()
+    {
+        if (ServiceProvider is null) return null;
+
+        return ServiceProvider.GetService(typeof(ILocalizationCultureManager)) as ILocalizationCultureManager;
+    }
 }

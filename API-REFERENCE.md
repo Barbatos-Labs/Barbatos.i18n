@@ -221,6 +221,10 @@ public interface ILocalizationCultureManager
   Switches the active culture for all managed providers using a `CultureInfo` instance.
 - **`GetCulture()`**
   Gets the currently active `CultureInfo`.
+- **`GetSupportedCultures()`**
+  Returns `IReadOnlyCollection<CultureInfo>` — the distinct set of cultures registered across the localization provider(s) (e.g. for populating a language switcher `ComboBox`/`Picker`). Falls back to `GetOperatingSystemCultures()` when no localization sets are registered.
+- **`GetOperatingSystemCultures()`** *(default method)*
+  Returns `IReadOnlyCollection<CultureInfo>` — the specific cultures known to the OS globalization data (`CultureInfo.GetCultures(CultureTypes.SpecificCultures)`), used as the fallback for `GetSupportedCultures()`. If that data is unavailable (e.g. globalization-invariant mode on some mobile platforms), it falls back to a collection containing only `CultureInfo.CurrentCulture`. Implemented as a C# default interface method, so it does not need to be re-implemented by every `ILocalizationCultureManager`.
 
 ---
 

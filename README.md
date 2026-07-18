@@ -628,6 +628,17 @@ public class SettingsViewModel
 }
 ```
 
+#### Listing supported cultures (for a language switcher)
+
+`ILocalizationCultureManager.GetSupportedCultures()` returns the distinct cultures registered across your localization provider(s) — handy for populating a `ComboBox`/`Picker` used to switch languages:
+
+```csharp
+public ObservableCollection<CultureInfo> SupportedCultures { get; } = new(
+    _cultureManager.GetSupportedCultures());
+```
+
+If no localization sets are registered yet (e.g. before any `FromJson`/`FromResource`/... call), it falls back to `GetOperatingSystemCultures()`, which returns every specific culture known to the OS's globalization data. If that data is unavailable (e.g. globalization-invariant mode on some mobile platforms), it falls back further to a collection containing only `CultureInfo.CurrentCulture`, so `GetSupportedCultures()` always returns at least one usable culture.
+
 ---
 
 ## Advanced Features

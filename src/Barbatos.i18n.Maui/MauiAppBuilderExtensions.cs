@@ -73,5 +73,15 @@ public static class MauiAppBuilderExtensions
         public void SetCulture(string cultureName) => _provider.SetCulture(new CultureInfo(cultureName));
         public CultureInfo GetCulture() => _provider.GetCulture();
         public LocalizationOptions Options => new LocalizationOptions();
+
+        public IReadOnlyCollection<CultureInfo> GetSupportedCultures()
+        {
+            CultureInfo[] cultures = _provider.GetLocalizationSets()
+                .Select(s => s.Culture)
+                .Distinct()
+                .ToArray();
+
+            return cultures.Length > 0 ? cultures : ((ILocalizationCultureManager)this).GetOperatingSystemCultures();
+        }
     }
 }

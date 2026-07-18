@@ -56,4 +56,16 @@ public class DependencyInjectionLocalizationCultureManager : ILocalizationCultur
     {
         return _resolver.GetProvider()?.GetCulture() ?? CultureInfo.CurrentCulture;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<CultureInfo> GetSupportedCultures()
+    {
+        CultureInfo[] cultures = _resolver.GetAllProviders()
+            .SelectMany(p => p.GetLocalizationSets())
+            .Select(s => s.Culture)
+            .Distinct()
+            .ToArray();
+
+        return cultures.Length > 0 ? cultures : ((ILocalizationCultureManager)this).GetOperatingSystemCultures();
+    }
 }
