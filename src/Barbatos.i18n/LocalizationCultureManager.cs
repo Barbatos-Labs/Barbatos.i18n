@@ -44,7 +44,7 @@ public class LocalizationCultureManager : ILocalizationCultureManager
 
         LocalizationProviderFactory.GetInstance()?.SetCulture(culture);
 
-        LocalizationNotifier.NotifyCultureChanged(culture);
+        LocalizationNotifier.NotifyCultureChanged(culture, targetCulture);
     }
 
     /// <inheritdoc />

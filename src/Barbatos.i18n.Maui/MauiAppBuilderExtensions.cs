@@ -110,7 +110,7 @@ public static class MauiAppBuilderExtensions
                 provider.SetCulture(cultureInfo);
             }
 
-            LocalizationNotifier.NotifyCultureChanged(cultureInfo);
+            LocalizationNotifier.NotifyCultureChanged(cultureInfo, targetCulture);
         }
 
         public CultureInfo GetCulture() => resolver.GetProvider()?.GetCulture() ?? CultureInfo.CurrentCulture;

@@ -187,10 +187,14 @@ not want to know which file a key lives in.
   where real `TextBlock`/`ItemsControl` instances work on an STA thread with no `Application`.
 - **`Application.Current` is null in tests**, so `LocalizationSource` applies changes synchronously on the calling
   thread instead of marshalling. Convenient for tests, but do not read that as proof the dispatcher path works.
-- **`CultureInfo.CurrentCulture` is per-thread.** `SetCulture` only updates the calling thread (plus
-  `DefaultThreadCurrent*`, which affects only *new* threads). Converters format arguments with
-  `CultureInfo.CurrentCulture`, so calling `SetCulture` off the UI thread can leave number/date formatting stale
-  even though the translated text updates correctly.
+- **`CultureInfo.CurrentCulture` is per-thread**, and `SetCulture` only sets it on the calling thread.
+  `DefaultThreadCurrentCulture` rescues a thread that never set its own culture, but *not* one that did — which
+  a previous on-thread `SetCulture` gives it. `LocalizationSource.Apply` therefore re-applies both cultures on
+  the dispatcher thread, and `LocalizationChangedEventArgs` carries `FormatCulture` separately from `Culture` so
+  a `FormatCultureBuilder` result survives the hop. Don't "simplify" that back to reading ambient state.
+- **MAUI bindings built from a string path are not trim safe.** The culture binding uses `Binding.Create` with an
+  expression for this reason; the remaining `new Binding { Source = … }` sites still warn (IL2026) and predate
+  this work.
 - **`LocalizeConverter` cannot re-translate.** An `IValueConverter` has no source change to re-trigger it on a
   culture switch, so its text goes stale while live bindings update. Prefer `BindText` on the markup extension;
   the converter is kept for back-compat and for MAUI's `Picker.ItemDisplayBinding`, which has no item template.

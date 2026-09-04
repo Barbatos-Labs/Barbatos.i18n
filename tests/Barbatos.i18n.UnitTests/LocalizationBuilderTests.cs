@@ -165,7 +165,12 @@ public sealed class LocalizationBuilderTests
         // 3. String literal lookup: "Test" works.
         localizationSet!["Test"].Should().Be("안녕하세요");
 
-        // 4. Default value lookup (for XAML): "hello" (the default culture translation) works.
-        localizationSet!["hello"].Should().Be("안녕하세요");
+        // 4. A translated value is not a key. TestResource is a generated RESX designer, so TestResource.Test
+        // returns the translation ("hello" under the neutral culture), not the key name. Looking a translation
+        // up finds nothing, which is exactly why a resource meant for {x:Static} is hand-written to return
+        // nameof - see Strings.cs in the WPF sample and the "Why nameof and not the resource value?" note in
+        // the README. Assertion 1 works despite the runtime value because CallerArgumentExpression reads the
+        // source text "TestResource.Test", not what the property evaluates to.
+        localizationSet!["hello"].Should().BeNull();
     }
 }

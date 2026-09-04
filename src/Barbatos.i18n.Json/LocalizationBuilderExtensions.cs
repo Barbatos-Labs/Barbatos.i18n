@@ -4,8 +4,6 @@
 // All Rights Reserved.
 
 using Barbatos.i18n.IO;
-using Barbatos.i18n.Json.Converters;
-using Barbatos.i18n.Json.Models;
 using Barbatos.i18n.Json.Parsers;
 
 namespace Barbatos.i18n.Json;
@@ -15,13 +13,6 @@ namespace Barbatos.i18n.Json;
 /// </summary>
 public static class LocalizationBuilderExtensions
 {
-    internal static readonly JsonSerializerOptions DefaultJsonSerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        AllowTrailingCommas = true,
-        Converters = { new TranslationsContainerConverter() },
-    };
-
     public static LocalizationBuilder FromJsonString(
         this LocalizationBuilder builder,
         string jsonString,
@@ -128,13 +119,36 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentNullException(nameof(contents));
         }
 
-        string version = JsonSerializer
-            .Deserialize<ITranslationsContainer>(contents, DefaultJsonSerializerOptions)
-            ?.Version
-            ?? "1.0.0";
-
-        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(version));
+        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(ReadVersion(contents)));
         return parser.Parse(contents);
+    }
+
+    /// <summary>
+    /// Reads the file's declared schema version.
+    /// </summary>
+    /// <param name="contents">The JSON contents.</param>
+    /// <returns>The version as written in the file, or "1.0.0" when the file declares none.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the root of the file is not an object.</exception>
+    private static string ReadVersion(string contents)
+    {
+        using JsonDocument document = JsonDocument.Parse(contents, JsonReading.DocumentOptions);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new LocalizationBuilderException(
+                $"The JSON localization file must have an object at its root, but it starts with {document.RootElement.ValueKind}."
+            );
+        }
+
+        if (!JsonReading.TryFindProperty(document.RootElement, "version", out JsonElement version))
+        {
+            return "1.0.0";
+        }
+
+        // A numeric version is accepted as readily as a quoted one; ReadMajorVersion validates the spelling.
+        return version.ValueKind == JsonValueKind.String
+            ? version.GetString() ?? "1.0.0"
+            : version.ToString();
     }
 
     /// <summary>

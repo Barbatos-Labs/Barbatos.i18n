@@ -190,12 +190,15 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     /// Creates the binding that watches <see cref="LocalizationSource"/> for culture changes.
     /// </summary>
     /// <returns>A one-way binding to the active culture.</returns>
-    internal static Binding CreateCultureBinding() =>
-        new(nameof(LocalizationSource.Culture))
-        {
-            Source = LocalizationSource.Instance,
-            Mode = BindingMode.OneWay
-        };
+    /// <remarks>
+    /// Built from an expression rather than a string path: a string-path binding is not trim safe, and the whole
+    /// live-localization feature hangs off this one resolving.
+    /// </remarks>
+    internal static BindingBase CreateCultureBinding() =>
+        Binding.Create(
+            static (LocalizationSource source) => source.Culture,
+            BindingMode.OneWay,
+            source: LocalizationSource.Instance);
 
     /// <summary>
     /// Assembles the multi-binding that feeds <see cref="StringLocalizerConverter"/>.

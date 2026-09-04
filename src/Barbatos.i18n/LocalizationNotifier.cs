@@ -36,13 +36,26 @@ public static class LocalizationNotifier
     /// </summary>
     /// <param name="culture">The culture that localization switched to.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="culture"/> is null.</exception>
-    public static void NotifyCultureChanged(CultureInfo culture)
+    public static void NotifyCultureChanged(CultureInfo culture) => NotifyCultureChanged(culture, culture);
+
+    /// <summary>
+    /// Raises the <see cref="CultureChanged"/> event with a separate formatting culture.
+    /// </summary>
+    /// <param name="culture">The culture that localization switched to.</param>
+    /// <param name="formatCulture">The culture that dates, numbers and currency are formatted with.</param>
+    /// <exception cref="ArgumentNullException">Thrown when either culture is null.</exception>
+    public static void NotifyCultureChanged(CultureInfo culture, CultureInfo formatCulture)
     {
         if (culture is null)
         {
             throw new ArgumentNullException(nameof(culture));
         }
 
-        CultureChanged?.Invoke(null, new LocalizationChangedEventArgs(culture));
+        if (formatCulture is null)
+        {
+            throw new ArgumentNullException(nameof(formatCulture));
+        }
+
+        CultureChanged?.Invoke(null, new LocalizationChangedEventArgs(culture, formatCulture));
     }
 }
