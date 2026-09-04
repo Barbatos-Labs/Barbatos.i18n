@@ -66,6 +66,12 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore -p:SourceLinkEnabled=true
 
+      # This workflow also runs automatically when a GitHub Release is published, so without this step a
+      # release could reach NuGet.org with failing tests and never be retractable. The runner is windows-latest
+      # and the MAUI workload is already restored, which is everything the WPF and MAUI suites need.
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
       # 3. USE 'dotnet nuget push' instead of 'nuget push' to automatically acquire the Token
       # --skip-duplicate: nupkg của cùng version không thể push lại → bỏ qua an toàn
       # Scoped to src: a repo-wide glob would push anything that happens to produce a package, and the MAUI

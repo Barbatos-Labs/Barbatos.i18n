@@ -42,8 +42,10 @@ Notes that will save time:
 - The MAUI workload is required (`dotnet workload restore`). Verify with `dotnet workload list`.
 - `Barbatos.i18n.Wpf.UnitTests` → `net8.0-windows;net10.0-windows`;
   `Barbatos.i18n.Maui.UnitTests` → `net9.0-windows10.0.19041.0;net10.0-windows10.0.19041.0`. Both need Windows.
-- **CI does not run tests.** `.github/workflows/barbatos-i18n-cd-nuget.yml` is `workflow_dispatch` only and just
-  packs/pushes to NuGet. The local test run is the only gate — run it before declaring anything done.
+- **Publishing is automatic.** `.github/workflows/barbatos-i18n-cd-nuget.yml` runs on `workflow_dispatch` **and
+  on `release: published`**, so tagging a GitHub Release pushes straight to NuGet.org. It now runs
+  `dotnet test -c Release` before pushing, but a green CI run is not a substitute for testing locally — and
+  anything that reaches NuGet.org can only be unlisted, never deleted.
 - Packages are produced by `GeneratePackageOnBuild=true`; a Release build with `-p:SourceLinkEnabled=true` also
   strong-name-signs with `src/barbatos.snk`.
 
