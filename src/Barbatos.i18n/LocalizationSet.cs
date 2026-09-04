@@ -61,6 +61,11 @@ public record LocalizationSet(
         }
     }
 
+    /// <summary>
+    /// Gets the translation for a key.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <returns>The translation, or null when this set does not carry the key.</returns>
     public string? this[LocalizationKey key]
     {
         get
@@ -86,10 +91,29 @@ public record LocalizationSet(
         }
     }
 
+    /// <summary>
+    /// Gets the translation for a key with its placeholders filled in.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="arguments">The values to fill the placeholders with.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? this[LocalizationKey key, params object[] arguments] => Format(key, arguments);
 
+    /// <summary>
+    /// Gets the translation for a key, formatted with this set's own culture.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="args">The values to fill the placeholders with, if any.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? Format(LocalizationKey key, params object?[]? args) => Format(null, key, args);
 
+    /// <summary>
+    /// Gets the translation for a key, formatted with the given provider.
+    /// </summary>
+    /// <param name="formatProvider">The provider to format the arguments with, or null to use this set's culture.</param>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="args">The values to fill the placeholders with, if any.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? Format(IFormatProvider? formatProvider, LocalizationKey key, params object?[]? args)
     {
         string? value = this[key];

@@ -5,10 +5,20 @@
 
 namespace Barbatos.i18n.Yaml;
 
+/// <summary>
+/// Deserializes the small subset of YAML that localization files use into namespaced dictionaries.
+/// </summary>
 public static class YamlDictionariesDeserializer
 {
     private const string DefaultNamespace = "default";
 
+    /// <summary>
+    /// Reads YAML contents into one dictionary per namespace.
+    /// </summary>
+    /// <param name="input">The YAML contents.</param>
+    /// <returns>
+    /// The namespaces found in the file, keyed by name; root-level keys are collected under "default".
+    /// </returns>
     public static IDictionary<string, IDictionary<string, string>> FromString(string input)
     {
         Dictionary<string, IDictionary<string, string>> result = new();

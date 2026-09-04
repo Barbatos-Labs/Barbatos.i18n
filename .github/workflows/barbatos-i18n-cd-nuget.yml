@@ -68,14 +68,16 @@ jobs:
 
       # 3. USE 'dotnet nuget push' instead of 'nuget push' to automatically acquire the Token
       # --skip-duplicate: nupkg của cùng version không thể push lại → bỏ qua an toàn
+      # Scoped to src: a repo-wide glob would push anything that happens to produce a package, and the MAUI
+      # sample did exactly that until it was marked IsPackable=false. Only src holds shipping packages.
       - name: Publish the package to NuGet.org
-        run: dotnet nuget push **\*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push src\**\*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
 
       - name: Publish the symbols to NuGet.org
-        run: dotnet nuget push **\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push src\**\*.snupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
 
       - name: Upload NuGet packages as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
-          path: '**\*.nupkg'
+          path: 'src\**\*.nupkg'

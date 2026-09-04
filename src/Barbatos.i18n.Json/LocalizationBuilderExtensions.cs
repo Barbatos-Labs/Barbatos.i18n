@@ -13,6 +13,14 @@ namespace Barbatos.i18n.Json;
 /// </summary>
 public static class LocalizationBuilderExtensions
 {
+    /// <summary>
+    /// Adds localized strings from JSON contents, in the default namespace.
+    /// </summary>
+    /// <param name="builder">The builder to add the localized strings to.</param>
+    /// <param name="jsonString">The JSON contents.</param>
+    /// <param name="culture">The culture the contents provide.</param>
+    /// <returns>The builder, so calls can be chained.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the contents are not a valid localization file.</exception>
     public static LocalizationBuilder FromJsonString(
         this LocalizationBuilder builder,
         string jsonString,
@@ -22,6 +30,15 @@ public static class LocalizationBuilderExtensions
         return builder.FromJsonString(jsonString, default, culture);
     }
 
+    /// <summary>
+    /// Adds localized strings from JSON contents, under the given namespace.
+    /// </summary>
+    /// <param name="builder">The builder to add the localized strings to.</param>
+    /// <param name="jsonString">The JSON contents.</param>
+    /// <param name="baseName">The namespace to register the set under, or null for the default namespace.</param>
+    /// <param name="culture">The culture the contents provide.</param>
+    /// <returns>The builder, so calls can be chained.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the contents are not a valid localization file.</exception>
     public static LocalizationBuilder FromJsonString(
         this LocalizationBuilder builder,
         string jsonString,
