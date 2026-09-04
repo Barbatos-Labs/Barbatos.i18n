@@ -153,6 +153,12 @@ The extension's `BuildBinding` and the converter's constructor flags (`hasCultur
 reorder a binding in `BuildBinding` without updating the converter flags, values silently shift by one and you
 get wrong or blank text rather than an exception.
 
+A test that constructs a converter with hand-written flags cannot catch that, because it never runs the
+extension that sets them. `SlotContractTests` (MAUI) drives the real extension, takes the multi-binding it
+emits, and feeds the converter values in that binding's own order, so the two halves are checked against each
+other. Measured: adding one unannounced binding to `BuildBinding` fails 4 of its 8 tests and **none** of the 34
+older MAUI tests.
+
 WPF and MAUI differ deliberately here: MAUI always returns a `BindingBase`, while WPF returns a live binding only
 when `IProvideValueTarget.TargetProperty is DependencyProperty` (see `StringLocalizerExtension.IsBindableTarget`),
 falling back to a plain string for targets like `Setter.Value` that report a CLR `PropertyInfo`. That gives WPF
