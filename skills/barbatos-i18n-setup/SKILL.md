@@ -76,6 +76,13 @@ Application.Current.UseStringLocalizer(loc => { /* same builder calls */ });
 builder.UseStringLocalizer(loc => { /* same builder calls */ });
 ```
 
+**Pick one of these two routes and stay on it.** They register into different places: `AddStringLocalizer`
+into the DI container, `UseStringLocalizer` into a static registry. A lookup tries DI first and falls back to
+the static one, so mixing them for the same `ProviderKey` mostly works — until the two hold different cultures.
+Then a key the DI provider lacks is answered by the static one, and the text comes from one language while
+details decided from the provider's culture, such as the plural form, come from the other. Migrating from the
+non-DI route to DI means removing the `UseStringLocalizer` call, not leaving it in place.
+
 ## Switching language at runtime
 
 Resolve `ILocalizationCultureManager` and call `SetCulture`. That one call applies the culture to the ambient

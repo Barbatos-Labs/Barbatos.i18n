@@ -36,14 +36,30 @@
       "name": "add-a-language",
       "prompt": "Our WPF desktop app ships English only using Barbatos.i18n. The locale files live in a Locales folder as en-US.json. I need to add Vietnamese. Walk me through exactly what to add - the files, the csproj changes, the registration code - and how the language picker should be populated.",
       "expected_output": "Adds a vi-VN JSON file, an EmbeddedResource entry, a FromJson registration with the new CultureInfo using dot-notation paths, and populates the picker from GetSupportedCultures() rather than a hardcoded list. Switching goes through ILocalizationCultureManager.SetCulture.",
-      "files": []
+      "files": [],
+      "assertions": [
+        "Adds an EmbeddedResource entry for the new file",
+        "Registration path uses dot-notation rather than a filesystem path",
+        "Registers the file with new CultureInfo(\"vi-VN\")",
+        "Populates the language picker from registered cultures rather than hardcoding, or justifies hardcoding",
+        "Language switching goes through ILocalizationCultureManager.SetCulture",
+        "Warns that a file which is not an EmbeddedResource will not be found"
+      ]
     },
     {
       "id": 3,
       "name": "troubleshoot-raw-keys",
       "prompt": "I just wired up Barbatos.i18n in my WPF app with dependency injection. Every single TextBlock is showing the key name - 'Greeting' instead of 'Hello'. The JSON locale files are definitely in the project and the build succeeds. What's wrong and how do I fix it?",
       "expected_output": "Diagnoses the whole-screen failure. Should lead with the missing ServiceProvider.UseWpfLocalization() bridge, since the XAML extensions cannot see a DI-registered provider without it, and also cover the EmbeddedResource requirement and dot-notation resource paths.",
-      "files": []
+      "files": [],
+      "assertions": [
+        "Identifies the missing UseWpfLocalization bridge",
+        "Ranks it first, or explains it is most likely because EVERY string fails",
+        "Covers the EmbeddedResource requirement",
+        "Covers dot-notation resource paths",
+        "Gives a concrete way to verify the fix",
+        "Every API named in its diagnostic snippet actually exists"
+      ]
     }
   ]
 }

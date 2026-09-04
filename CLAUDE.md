@@ -103,6 +103,14 @@ duplicated at ten sites (five per UI package) and resolved each registry twice p
 Both registries are keyed by `ProviderKey` (empty string = default), which is what the XAML `ProviderKey='...'`
 argument selects.
 
+**Do not populate both registries for the same key with different cultures.** `ResolveValue` searches DI and
+then falls back to the static registry, while `ResolveCulture` - which decides the plural form - returns the DI
+provider's culture whenever one exists. If the DI provider lacks the key and the static one supplies it, the
+text comes from one language and its grammar from the other: measured as English "0 item left", the French
+rule applied to an English string. Resolving that properly would mean searching for the key twice on the hot
+path to find out which provider answered, which is not worth paying on every binding for what is really a
+misconfiguration. Register a given `ProviderKey` in one registry.
+
 ### Three culture managers
 
 `ILocalizationCultureManager` has three implementations that must stay behaviourally aligned:
