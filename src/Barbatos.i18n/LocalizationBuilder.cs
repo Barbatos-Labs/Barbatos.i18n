@@ -40,11 +40,17 @@ public class LocalizationBuilder
     }
 
     /// <summary>
-    /// Adds a localization set to the collection.
+    /// Adds a localization set to the collection, merging it into an existing set of the same name and culture.
     /// </summary>
     /// <param name="localization">The localization set to add.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="localization"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when a localization set with the same name already exists for the culture.</exception>
+    /// <remarks>
+    /// Two files can legitimately belong to one namespace - a YAML file's root-level keys and an INI file named
+    /// after nothing but its culture are both in the default one - and refusing that combination aborted
+    /// application startup over a detail the consumer had no reason to anticipate. They are merged instead, and
+    /// a key present in both keeps the value from the file registered first, which is the precedence a lookup
+    /// already applies when it searches sets in registration order.
+    /// </remarks>
     public virtual void AddLocalization(LocalizationSet localization)
     {
         if (localization is null)
@@ -52,19 +58,42 @@ public class LocalizationBuilder
             throw new ArgumentNullException(nameof(localization));
         }
 
-        if (
-            _localizations.Any(x =>
-                x.Name == localization.Name && x.Culture.Equals(localization.Culture)
-            )
-        )
+        int existingIndex = _localizations.FindIndex(x =>
+            x.Name == localization.Name && x.Culture.Equals(localization.Culture)
+        );
+
+        if (existingIndex < 0)
         {
-            // NOTE: Consider adding merging of multiple collections for one culture
-            throw new InvalidOperationException(
-                $"Localization \"{localization.Name}\" for culture {localization.Culture} already exists."
-            );
+            _localizations.Add(localization);
+            return;
         }
 
-        _localizations.Add(localization);
+        // Replaced in place so that the merged set keeps the position of the file registered first.
+        _localizations[existingIndex] = Merge(_localizations[existingIndex], localization);
+    }
+
+    /// <summary>
+    /// Merges two sets that share a name and a culture.
+    /// </summary>
+    /// <param name="first">The set registered first, whose values win.</param>
+    /// <param name="second">The set registered afterwards.</param>
+    /// <returns>A set carrying the keys of both, dictionary-backed so lookups stay O(1).</returns>
+    private static LocalizationSet Merge(LocalizationSet first, LocalizationSet second)
+    {
+        Dictionary<LocalizationKey, string?> merged = new();
+
+        // Seeded with the later file, then overwritten by the earlier one, so the earlier value wins.
+        foreach (KeyValuePair<LocalizationKey, string?> pair in second.Strings)
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
+        foreach (KeyValuePair<LocalizationKey, string?> pair in first.Strings)
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
+        return first with { Strings = merged };
     }
 
     /// <summary>

@@ -31,15 +31,14 @@ public static class EmbeddedResourceReader
             return ReadResource(assembly, NormalizeSeparators(path));
         }
 
-        string resourceName = assemblyName + ".";
+        // Only a leading assembly name is stripped, and only once. Removing every occurrence corrupted any path
+        // in which the name appears again - with a short assembly name such as "App" or "Core", a folder or file
+        // containing it lost those characters and the resource was reported missing.
+        string relativePath = path.StartsWith(assemblyName, StringComparison.InvariantCultureIgnoreCase)
+            ? path.Substring(assemblyName.Length)
+            : path;
 
-        resourceName += path.Replace(
-            assemblyName,
-            string.Empty,
-            StringComparison.InvariantCultureIgnoreCase
-        );
-
-        return ReadResource(assembly, NormalizeSeparators(resourceName));
+        return ReadResource(assembly, NormalizeSeparators(assemblyName + "." + relativePath));
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ public static class LocalizationSetNaming
     /// </summary>
     /// <param name="path">The dot-notated resource path, for example "Locales.Translations-en-US.ini".</param>
     /// <param name="culture">The culture the file is registered for.</param>
-    /// <returns>The lower-cased set name, or null when no name can be derived.</returns>
+    /// <returns>The lower-cased set name, or null when the file belongs in the default namespace.</returns>
     /// <remarks>
     /// The name is the file name with its extension, its folders and any "-{culture}" suffix removed, so
     /// "Locales.Translations-en-US.ini" becomes "translations". When nothing but the culture is left -
@@ -81,11 +81,12 @@ public static class LocalizationSetNaming
             return fileName.ToLowerInvariant();
         }
 
-        // The file is named after nothing but its culture, so the folder is what identifies the set. Without a
-        // folder there is nothing better to fall back on than the name as written.
+        // The file is named after nothing but its culture, so the folder is what identifies the set. With no
+        // folder either, the file carries no namespace of its own and belongs in the default one; sets sharing
+        // a name and culture are merged, so landing there alongside another file is safe.
         return folder is { Length: > 0 } && !IsCultureName(folder, culture)
             ? folder.ToLowerInvariant()
-            : fileName.ToLowerInvariant();
+            : null;
     }
 
     /// <summary>

@@ -36,10 +36,11 @@ public sealed class LocalizationSetNamingTests
     }
 
     [Fact]
-    public void AFileWithNoFolder_KeepsItsNameAsWritten()
+    public void AFileWithNoFolder_BelongsInTheDefaultNamespace()
     {
-        // Nothing better to fall back on, and returning no name would collide with another default-namespace set.
-        LocalizationSetNaming.DeriveName("en-US.ini", new CultureInfo("en-US")).Should().Be("en-us");
+        // Nothing identifies the set but its culture, which is not a namespace. Merging makes this safe even
+        // when another file already contributes to the default namespace.
+        LocalizationSetNaming.DeriveName("en-US.ini", new CultureInfo("en-US")).Should().BeNull();
     }
 
     [Fact]

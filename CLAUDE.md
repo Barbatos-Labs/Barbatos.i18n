@@ -165,9 +165,12 @@ Each format package follows the same shape — copy `Barbatos.i18n.Ini` as the t
   the rule used to be copy-pasted into all three packages. It is the file name minus extension, folders and the
   `-{culture}` suffix, lowercased, so `Translations-en-US.ini` becomes `translations`. When nothing but the
   culture is left, the **folder** names the set: `Locales.en-US.ini` becomes `locales`, so all three languages
-  share one namespace instead of becoming `en-us`/`vi-vn`/`ko-kr`. It never returns null, because
-  `LocalizationBuilder.AddLocalization` still throws on a duplicate name+culture and an unnamed set would
-  collide with the default namespace a YAML file contributes. `LocalizationSetNamingTests` pins all of it.
+  share one namespace instead of becoming `en-us`/`vi-vn`/`ko-kr`; with no folder either it returns null, the
+  default namespace. `LocalizationSetNamingTests` pins all of it.
+- **`AddLocalization` merges** a set whose name and culture match one already registered, rather than throwing:
+  a YAML file's root-level keys and an INI file named after nothing but its culture both belong to the default
+  namespace, and refusing that aborted startup. The set registered **first** keeps its position and wins on a
+  duplicated key, matching the precedence a lookup applies. `LocalizationSetMergingTests` pins it.
 - The parser returns `IEnumerable<KeyValuePair<LocalizationKey, string?>>` — make it a **`Dictionary`**, since
   `LocalizationSet`'s indexer only takes its O(1) path for dictionary-backed strings. Failures should throw
   `LocalizationBuilderException`, not a raw parser exception (`JsonReading.ParseDocument` shows the wrapping).

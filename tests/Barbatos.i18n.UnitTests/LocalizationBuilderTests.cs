@@ -132,13 +132,20 @@ public sealed class LocalizationBuilderTests
     }
 
     [Fact]
-    public void AddLocalization_DuplicateShouldThrow()
+    public void AddLocalization_DuplicateShouldMerge()
     {
+        // Registering two files into one namespace used to abort startup. Two files can legitimately belong
+        // there - a YAML file's root-level keys and an INI file named after nothing but its culture are both
+        // in the default namespace - so they are merged instead.
         LocalizationBuilder builder = new();
         builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key", "val" } });
-        
-        Action act = () => builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key2", "val2" } });
-        act.Should().Throw<InvalidOperationException>();
+        builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key2", "val2" } });
+
+        builder.SetCulture(new CultureInfo("en-US"));
+        LocalizationSet? set = builder.Build().GetLocalizationSet(new CultureInfo("en-US"), null);
+
+        set!["key"].Should().Be("val");
+        set["key2"].Should().Be("val2");
     }
 
     [Fact]
