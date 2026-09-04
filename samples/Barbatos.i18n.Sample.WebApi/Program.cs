@@ -10,6 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// A server answers many requests at once, so localization must follow the culture of the request being handled
+// rather than a process-wide "current" one. UseRequestLocalization below establishes CurrentUICulture per
+// request, and this makes lookups read it.
+builder.Services.ConfigureLocalizationOptions(options => options.UseAmbientCulture = true);
+
 // Register Localization using Barbatos.i18n
 builder.Services.AddStringLocalizer(i18nBuilder =>
 {
@@ -34,18 +39,11 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
+// This is the only wiring needed. There used to be middleware here calling ILocalizationCultureManager.SetCulture
+// with the request's culture, which mutates process-wide state: under concurrent requests they overwrote each
+// other and a request could be answered in another request's language. UseAmbientCulture reads the culture that
+// this call already establishes for the request, so no middleware is required.
 app.UseRequestLocalization();
-
-// Create middleware to sync ASP.NET Core request culture with Barbatos.i18n culture manager
-app.Use(async (context, next) =>
-{
-    var cultureManager = context.RequestServices.GetRequiredService<ILocalizationCultureManager>();
-    // Set Barbatos culture to match ASP.NET Core culture resolved for the current request
-    cultureManager.SetCulture(CultureInfo.CurrentUICulture);
-
-    await next();
-});
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -56,6 +56,13 @@ public class DependencyInjectionLocalizationCultureManager : ILocalizationCultur
     /// <inheritdoc />
     public CultureInfo GetCulture()
     {
+        // Ambient mode reads the culture established for the current request or thread rather than the shared
+        // provider's, so concurrent requests cannot answer each other's language.
+        if (Options.UseAmbientCulture)
+        {
+            return CultureInfo.CurrentUICulture;
+        }
+
         return _resolver.GetProvider()?.GetCulture() ?? CultureInfo.CurrentCulture;
     }
 

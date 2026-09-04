@@ -175,6 +175,15 @@ Each format package follows the same shape — copy `Barbatos.i18n.Ini` as the t
   `LocalizationSet`'s indexer only takes its O(1) path for dictionary-backed strings. Failures should throw
   `LocalizationBuilderException`, not a raw parser exception (`JsonReading.ParseDocument` shows the wrapping).
 
+### Server-side culture
+
+A provider's culture is process-wide state, which fits one user at a time and not a server. The WebApi sample
+used to turn each request's language into an `ILocalizationCultureManager.SetCulture` call; measured over 400
+parallel lookups, **160 were answered in another request's language**. `LocalizationOptions.UseAmbientCulture`
+(off by default) makes `DependencyInjectionLocalizationCultureManager.GetCulture()` read
+`CultureInfo.CurrentUICulture` instead, which ASP.NET Core establishes per request and which flows with the
+async context - so no middleware calls `SetCulture` at all. `AmbientCultureTests` pins it.
+
 ### DI layer
 
 `services.AddStringLocalizer(...)` registers `IStringLocalizerFactory`, `ILocalizationCultureManager`,
