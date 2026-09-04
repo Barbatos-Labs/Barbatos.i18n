@@ -11,56 +11,101 @@ using Barbatos.i18n.Wpf;
 namespace Barbatos.i18n.Wpf.UnitTests;
 
 /// <summary>
-/// The plural form is selected on count > 1, which is the French rule: zero and one both take the singular.
-/// English does not work that way - "0 items left" is plural - so an English UI showing a zero count reads
-/// "0 item left" unless the application handles zero itself. This test pins the behaviour so the choice is
-/// visible rather than surprising; changing it would alter output for every consumer.
+/// Plural selection used to be count > 1 everywhere, which is the French rule: it made an English UI read
+/// "0 item left". Only zero differs between languages, so only zero is decided by culture.
 /// </summary>
 [Collection("Sequential")]
 public sealed class PluralZeroTests : IDisposable
 {
-    private static readonly CultureInfo Culture = new("en-US");
+    private readonly CultureInfo _originalUiCulture = CultureInfo.CurrentUICulture;
+    private readonly CultureInfo _originalCulture = CultureInfo.CurrentCulture;
 
     public PluralZeroTests()
     {
         var builder = new LocalizationBuilder();
-        builder.AddLocalization(new LocalizationSet(null, Culture, new Dictionary<LocalizationKey, string?>
+
+        foreach ((string culture, string one, string many) in new[]
         {
-            { "one", "{0} item left" },
-            { "many", "{0} items left" }
-        }));
-        builder.SetCulture(Culture);
+            ("en-US", "{0} item left", "{0} items left"),
+            ("fr-FR", "{0} article restant", "{0} articles restants")
+        })
+        {
+            builder.AddLocalization(new LocalizationSet(null, new CultureInfo(culture),
+                new Dictionary<LocalizationKey, string?> { { "one", one }, { "many", many } }));
+        }
+
+        builder.SetCulture(new CultureInfo("en-US"));
 
         LocalizationProviderFactory.SetInstance(builder.Build(), string.Empty);
         WpfLocalization.Initialize(null!);
-        new LocalizationCultureManager().SetCulture(Culture);
     }
 
-    public void Dispose() => LocalizationProviderFactory.SetInstance(null!, string.Empty);
+    public void Dispose()
+    {
+        LocalizationProviderFactory.SetInstance(null!, string.Empty);
+        CultureInfo.CurrentUICulture = _originalUiCulture;
+        CultureInfo.CurrentCulture = _originalCulture;
+    }
 
-    private static object? Resolve(int count) =>
-        new PluralStringLocalizerExtension { Text = "one", PluralText = "many", Count = count, Live = false }
+    private static object? Resolve(string culture, int count)
+    {
+        new LocalizationCultureManager().SetCulture(new CultureInfo(culture));
+
+        return new PluralStringLocalizerExtension { Text = "one", PluralText = "many", Count = count, Live = false }
             .ProvideValue(null!);
+    }
 
     [Theory]
+    [InlineData(0, "0 items left")]
     [InlineData(2, "2 items left")]
     [InlineData(5, "5 items left")]
-    public void MoreThanOne_TakesThePluralForm(int count, string expected)
+    public void English_TreatsEverythingButOneAsPlural(int count, string expected)
     {
-        Resolve(count).Should().Be(expected);
+        Resolve("en-US", count).Should().Be(expected);
     }
 
     [Fact]
-    public void One_TakesTheSingularForm()
+    public void English_TreatsOneAsSingular()
     {
-        Resolve(1).Should().Be("1 item left");
+        Resolve("en-US", 1).Should().Be("1 item left");
+    }
+
+    [Theory]
+    [InlineData(0, "0 article restant")]
+    [InlineData(1, "1 article restant")]
+    public void French_GroupsZeroWithOne(int count, string expected)
+    {
+        Resolve("fr-FR", count).Should().Be(expected, "French counts zero as singular");
     }
 
     [Fact]
-    public void Zero_TakesTheSingularForm_WhichEnglishDoesNotExpect()
+    public void French_TreatsTwoAsPlural()
     {
-        Resolve(0).Should().Be(
-            "0 item left",
-            "the rule is count > 1, so an English UI needs to handle zero itself");
+        Resolve("fr-FR", 2).Should().Be("2 articles restants");
+    }
+
+    [Theory]
+    [InlineData("en-US", 0, true)]
+    [InlineData("vi-VN", 0, true)]
+    [InlineData("de-DE", 0, true)]
+    [InlineData("fr-FR", 0, false)]
+    [InlineData("fr-CA", 0, false)]
+    [InlineData("pt-BR", 0, false)]
+    [InlineData("pt-PT", 0, true)]
+    [InlineData("en-US", 1, false)]
+    [InlineData("fr-FR", 1, false)]
+    [InlineData("en-US", 2, true)]
+    [InlineData("fr-FR", 2, true)]
+    [InlineData("en-US", -1, true)]
+    public void TheRuleItself(string culture, int count, bool expectedPlural)
+    {
+        PluralRules.IsPlural(count, new CultureInfo(culture)).Should().Be(expectedPlural);
+    }
+
+    [Fact]
+    public void ANullCulture_Throws()
+    {
+        FluentActions.Invoking(() => PluralRules.IsPlural(0, null!))
+            .Should().Throw<ArgumentNullException>();
     }
 }

@@ -145,6 +145,18 @@ when `IProvideValueTarget.TargetProperty is DependencyProperty` (see `StringLoca
 falling back to a plain string for targets like `Setter.Value` that report a CLR `PropertyInfo`. That gives WPF
 **two code paths that must stay behaviourally identical** — `BuildBinding` and `Localize()`. They have drifted before.
 
+### Pluralization
+
+`PluralRules.IsPlural` in the core package is the single place the singular/plural choice is made - both
+converters and both extensions call it, so WPF and MAUI cannot drift. One is singular, any other non-zero
+count is plural, and **zero is the only count decided by culture**: plural in English and most languages,
+singular in French, Brazilian Portuguese, Armenian and Kabyle. The rule used to be `count > 1` inline at six
+sites, which is the French rule applied everywhere and made an English UI read "0 item left".
+
+It is deliberately a two-form model. Languages needing three or more categories (Russian, Polish, Arabic,
+Czech) cannot be expressed and should select the key in the view model instead. `PluralRulesTests` and
+`PluralZeroTests` pin both halves.
+
 ### Wpf / Maui mirroring
 
 `src/Barbatos.i18n.Wpf/` and `src/Barbatos.i18n.Maui/` hold near-identical mirrored files

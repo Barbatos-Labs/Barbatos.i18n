@@ -85,12 +85,16 @@ Keys are normalized to lower case, so the enum's own casing never has to match t
                   BindCount={Binding Stock}}" />
 ```
 
-The plural form is chosen when the count is greater than **1**, and the count is passed as `{0}` to the selected
-string. `BindText` and `BindPluralText` supply the two keys from bindings when they are data-driven.
+One is singular, anything else is plural, and the count is passed as `{0}` to the selected string. `BindText`
+and `BindPluralText` supply the two keys from bindings when they are data-driven.
 
-**Zero takes the singular form.** `count > 1` is the French rule — zero and one are both singular — and English
-does not work that way, so an English UI renders "0 item left" where it should say "0 items left". If zero is
-reachable in your data, handle it explicitly rather than assuming the extension will:
+**Zero follows the language.** English says "0 items", French says "0 article" — zero is the only count whose
+form differs between languages, so `PluralRules` decides it from the active UI culture. You do not have to do
+anything for this; it is worth knowing because it means a translation's plural string has to read correctly
+with a zero in it.
+
+If a zero deserves different wording rather than a different grammatical form — "Out of stock" instead of
+"0 items left" — say so explicitly:
 
 ```xml
 <TextBlock>
@@ -109,8 +113,10 @@ reachable in your data, handle it explicitly rather than assuming the extension 
 ```
 
 Note the `Live=True` on both: a `Setter.Value` target reports a CLR property, so without it WPF resolves once
-and the text stops following culture changes. A dedicated "out of stock" string usually reads better than a
-grammatically-correct zero anyway.
+and the text stops following culture changes.
+
+**Two forms is the ceiling.** Russian, Polish, Arabic and Czech need three or more plural categories, which
+this model cannot express. For those, choose the key in the view model and pass it through `BindText`.
 
 Because the count is always formatted into the string, avoid a literal `{` or `}` in a plural translation
 unless it is a real placeholder — `string.Format` will reject it.

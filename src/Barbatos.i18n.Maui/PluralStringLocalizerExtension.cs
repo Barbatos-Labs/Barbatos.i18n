@@ -200,7 +200,7 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private string Localize()
     {
-        bool isPlural = Count > 1;
+        bool isPlural = PluralRules.IsPlural(Count ?? 0);
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
         string? selectedKey = isPlural ? PluralText : Text;
