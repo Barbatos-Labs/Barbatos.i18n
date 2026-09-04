@@ -102,6 +102,32 @@ public sealed class PluralZeroTests : IDisposable
         PluralRules.IsPlural(count, new CultureInfo(culture)).Should().Be(expectedPlural);
     }
 
+
+    [Fact]
+    public void ThePluralRuleFollowsTheProviderNotTheThread()
+    {
+        // An application that sets its language on the builder and never calls the culture manager leaves the
+        // provider on French while the thread still reports the operating system's English. The translation
+        // comes from the French set, so the French rule has to decide its form - reading the ambient UI culture
+        // here produced the French text with English grammar: "0 articles restants".
+        var builder = new LocalizationBuilder();
+        builder.AddLocalization(new LocalizationSet(null, new CultureInfo("fr-FR"),
+            new Dictionary<LocalizationKey, string?>
+            {
+                { "one", "{0} article restant" },
+                { "many", "{0} articles restants" }
+            }));
+        builder.SetCulture(new CultureInfo("fr-FR"));
+
+        LocalizationProviderFactory.SetInstance(builder.Build(), string.Empty);
+        WpfLocalization.Initialize(null!);
+        CultureInfo.CurrentUICulture = new CultureInfo("en-US");
+
+        new PluralStringLocalizerExtension { Text = "one", PluralText = "many", Count = 0, Live = false }
+            .ProvideValue(null!)
+            .Should().Be("0 article restant");
+    }
+
     [Fact]
     public void ANullCulture_Throws()
     {

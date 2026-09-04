@@ -129,7 +129,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
 
         // PluralRules owns the decision so WPF, MAUI, the converters and the extensions cannot drift apart,
         // and so that zero follows the language rather than always taking the singular.
-        bool isPlural = PluralRules.IsPlural(count);
+        bool isPlural = PluralRules.IsPlural(count, LocalizationLookup.ResolveCulture(ProviderKey));
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
         string? selectedKey = isPlural ? pluralKey : key;

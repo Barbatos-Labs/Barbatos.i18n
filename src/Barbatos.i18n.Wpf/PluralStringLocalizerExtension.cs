@@ -243,7 +243,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
     /// <returns>True if the number is greater than 1, false otherwise.</returns>
     private bool IsSelectedNumberPlural()
     {
-        return PluralRules.IsPlural(Count ?? 0);
+        return PluralRules.IsPlural(Count ?? 0, LocalizationLookup.ResolveCulture(ProviderKey));
     }
 
     /// <summary>

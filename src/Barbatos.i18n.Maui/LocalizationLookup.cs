@@ -65,6 +65,27 @@ internal static class LocalizationLookup
         return Search(provider, normalizedNamespace, key) ?? Search(fallback, normalizedNamespace, key);
     }
 
+
+    /// <summary>
+    /// Gets the language a provider is currently serving.
+    /// </summary>
+    /// <param name="providerKey">The provider key.</param>
+    /// <returns>The provider's culture, or the ambient UI culture when no provider is registered.</returns>
+    /// <remarks>
+    /// Translations are selected from this culture, so anything that depends on the language of the resulting
+    /// text - plural form, most obviously - has to ask the same question of the same source. Reading the
+    /// ambient UI culture instead looks equivalent because SetCulture assigns both, but an application that
+    /// configures its language on the builder and never calls the culture manager leaves them different: the
+    /// provider serves French while the thread still says English, and "0 article restant" came back pluralised
+    /// as "0 articles restants".
+    /// </remarks>
+    internal static CultureInfo ResolveCulture(string providerKey)
+    {
+        return MauiLocalization.GetProvider(providerKey)?.GetCulture()
+            ?? LocalizationProviderFactory.GetInstance(providerKey)?.GetCulture()
+            ?? CultureInfo.CurrentUICulture;
+    }
+
     /// <summary>
     /// Lower-cases a namespace once, so the hot path does not allocate a new string on every value read.
     /// </summary>

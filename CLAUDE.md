@@ -148,7 +148,11 @@ falling back to a plain string for targets like `Setter.Value` that report a CLR
 ### Pluralization
 
 `PluralRules.IsPlural` in the core package is the single place the singular/plural choice is made - both
-converters and both extensions call it, so WPF and MAUI cannot drift. One is singular, any other non-zero
+converters and both extensions call it, so WPF and MAUI cannot drift. They pass
+`LocalizationLookup.ResolveCulture(ProviderKey)`, **not** the ambient UI culture: the translation was selected
+from the provider's culture, so the form has to be decided by the same one. An application that sets its
+language on the builder and never calls the culture manager leaves the two different, and reading the thread
+gave French text with English grammar. One is singular, any other non-zero
 count is plural, and **zero is the only count decided by culture**: plural in English and most languages,
 singular in French, Brazilian Portuguese, Armenian and Kabyle. The rule used to be `count > 1` inline at six
 sites, which is the French rule applied everywhere and made an English UI read "0 item left".
