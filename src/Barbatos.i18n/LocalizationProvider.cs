@@ -44,6 +44,27 @@ public class LocalizationProvider : ILocalizationProvider
     /// <inheritdoc />
     public LocalizationSet? GetLocalizationSet(CultureInfo culture, string? name)
     {
+        // Specificity wins over naming: each culture in the chain is fully considered before falling back to a
+        // less specific one, so an exact-culture match is never lost to a parent's set.
+        foreach (CultureInfo candidate in CultureFallback.EnumerateChain(culture))
+        {
+            if (MatchSet(candidate, name) is { } match)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the set for one exact culture.
+    /// </summary>
+    /// <param name="culture">The culture to match exactly.</param>
+    /// <param name="name">The set name, or null for the default set.</param>
+    /// <returns>The matching set, or null.</returns>
+    private LocalizationSet? MatchSet(CultureInfo culture, string? name)
+    {
         if (name is null)
         {
             // A null name asks for the default set. Match the unnamed set first: without this, callers that

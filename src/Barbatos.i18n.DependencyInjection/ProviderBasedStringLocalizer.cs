@@ -26,10 +26,19 @@ public class ProviderBasedStringLocalizer(
         LocalizeString(name, arguments);
 
     /// <inheritdoc />
-    public IEnumerable<LocalizedString> GetAllStrings(bool _)
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
-        LocalizationSet? localizationSet = localizations.GetLocalizationSet(cultureManager.GetCulture(), baseName)
-            ?? localizations.GetLocalizationSet(cultureManager.GetCulture(), default);
+        CultureInfo culture = cultureManager.GetCulture();
+
+        LocalizationSet? localizationSet = localizations.GetLocalizationSet(culture, baseName)
+            ?? localizations.GetLocalizationSet(culture, default);
+
+        // The lookup walks parent cultures on its own, so a result may come from a less specific culture than
+        // the one asked for. Drop it when the caller said not to include parents.
+        if (localizationSet is not null && !includeParentCultures && !localizationSet.Culture.Equals(culture))
+        {
+            return [];
+        }
 
         return localizationSet?.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key)) ?? [];
     }

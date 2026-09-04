@@ -67,6 +67,11 @@ markup extension  →  MultiBinding + converter  →  LocalizationLookup.Resolve
 - `LocalizationBuilder` collects `LocalizationSet`s and `Build()`s an `ILocalizationProvider`.
 - `LocalizationSet` is an immutable record of `(Name, Culture, Strings)`. `Name` is the "namespace" surfaced in
   XAML as `Namespace='errors'`.
+- **Culture fallback.** `GetLocalizationSet(culture, name)` walks `CultureFallback.EnumerateChain`: the exact
+  culture first, then each parent, ending at the invariant culture — so a set registered for `en` also serves
+  `en-GB`. Each culture is fully considered (unnamed set, then any) before moving to a less specific one, so an
+  exact match never loses to a parent. `GetLocalizationSets(culture)` deliberately stays **exact**, which is how
+  `GetAllStrings(includeParentCultures: false)` scopes itself.
 - `LocalizationKey` is a `readonly struct` that **normalizes every key**: `:` → `.` and `ToLowerInvariant()`.
   This is why `Header:Title`, `header.TITLE` and `Header.Title` are the same key, and why enum member names work
   as keys regardless of casing. It implicitly converts to/from `string`, so normalization is often invisible at

@@ -33,9 +33,19 @@ public class CompositeStringLocalizer(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        return localizations.GetLocalizationSets(culture)
+        if (!includeParentCultures)
+        {
+            return localizations.GetLocalizationSets(culture)
+                .SelectMany(s => s.Strings)
+                .Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
+        }
+
+        // A key defined at several levels is reported once, with the most specific culture winning.
+        return CultureFallback.EnumerateChain(culture)
+            .SelectMany(localizations.GetLocalizationSets)
             .SelectMany(s => s.Strings)
-            .Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
+            .GroupBy(pair => pair.Key)
+            .Select(group => new LocalizedString(group.Key, group.First().Value ?? group.Key));
     }
 
     /// <summary>
@@ -114,11 +124,22 @@ public class CompositeStringLocalizer<TResource>(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        // Start with the resource-scoped set
+        // Start with the resource-scoped set. The lookup walks parent cultures on its own, so a result from a
+        // less specific culture is discarded when the caller said not to include parents.
         LocalizationSet? primarySet = localizations.GetLocalizationSet(culture, ResourceName);
-        if (primarySet is not null)
+        if (primarySet is not null && (includeParentCultures || primarySet.Culture.Equals(culture)))
         {
             return primarySet.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
+        }
+
+        if (includeParentCultures)
+        {
+            // A key defined at several levels is reported once, with the most specific culture winning.
+            return CultureFallback.EnumerateChain(culture)
+                .SelectMany(localizations.GetLocalizationSets)
+                .SelectMany(s => s.Strings)
+                .GroupBy(pair => pair.Key)
+                .Select(group => new LocalizedString(group.Key, group.First().Value ?? group.Key));
         }
 
         // Fallback: aggregate all sets for the culture
