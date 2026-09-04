@@ -289,13 +289,6 @@ public class StringLocalizerExtension : MarkupExtension
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private object Localize()
     {
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
-
-        if (localizationSet is null)
-        {
-            return Text ?? string.Empty;
-        }
-
         List<object?>? args = null;
 
         if (Arg is not null)
@@ -328,7 +321,12 @@ public class StringLocalizerExtension : MarkupExtension
             args.Add(Arg5);
         }
 
-        string result = localizationSet.Format(CultureInfo.CurrentCulture, Text!, args?.ToArray() ?? null) ?? Text ?? string.Empty;
+        string result = LocalizationLookup.ResolveFormatted(
+            ProviderKey,
+            LocalizationLookup.NormalizeNamespace(Namespace),
+            Text!,
+            CultureInfo.CurrentCulture,
+            args?.ToArray()) ?? Text ?? string.Empty;
 
         if (StringFormat is not null)
         {

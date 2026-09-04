@@ -134,10 +134,8 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
             selectedKey = count > 1 ? key : pluralKey;
         }
 
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, _normalizedNamespace);
-
         string localizedString =
-            localizationSet?[(LocalizationKey)(selectedKey ?? string.Empty)]
+            LocalizationLookup.ResolveValue(ProviderKey, _normalizedNamespace, selectedKey ?? string.Empty)
             ?? StringLocalizerExtension.EscapeText(selectedKey);
 
         return string.Format(CultureInfo.CurrentCulture, localizedString, count);

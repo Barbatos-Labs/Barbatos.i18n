@@ -200,8 +200,6 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private string Localize()
     {
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
-
         bool isPlural = Count > 1;
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
@@ -212,7 +210,10 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
         }
 
         string localizedString =
-            localizationSet?[(LocalizationKey)(selectedKey ?? string.Empty)]
+            LocalizationLookup.ResolveValue(
+                ProviderKey,
+                LocalizationLookup.NormalizeNamespace(Namespace),
+                selectedKey ?? string.Empty)
             ?? StringLocalizerExtension.EscapeText(selectedKey);
 
         string result = string.Format(CultureInfo.CurrentCulture, localizedString, Count ?? 0);

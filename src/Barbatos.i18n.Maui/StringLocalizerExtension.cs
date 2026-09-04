@@ -259,11 +259,9 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private string Localize()
     {
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
-
         string result = EscapeText(Text);
 
-        if (localizationSet is not null && Text is not null)
+        if (Text is not null)
         {
             List<object?>? args = null;
             if (Arg is not null) { args ??= new List<object?>(); args.Add(Arg); }
@@ -272,7 +270,12 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
             if (Arg4 is not null) { args ??= new List<object?>(); args.Add(Arg4); }
             if (Arg5 is not null) { args ??= new List<object?>(); args.Add(Arg5); }
 
-            result = localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)Text, args?.ToArray() ?? null) ?? EscapeText(Text);
+            result = LocalizationLookup.ResolveFormatted(
+                ProviderKey,
+                LocalizationLookup.NormalizeNamespace(Namespace),
+                Text,
+                CultureInfo.CurrentCulture,
+                args?.ToArray()) ?? EscapeText(Text);
         }
 
         if (StringFormat is not null)

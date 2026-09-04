@@ -211,8 +211,6 @@ public class PluralStringLocalizerExtension : MarkupExtension
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private object Localize()
     {
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
-
         bool isPlural = IsSelectedNumberPlural();
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
@@ -222,13 +220,11 @@ public class PluralStringLocalizerExtension : MarkupExtension
             selectedKey = isPlural ? Text : PluralText;
         }
 
-        if (localizationSet is null)
-        {
-            return selectedKey ?? string.Empty;
-        }
-
         string localizedString =
-            localizationSet[(LocalizationKey)(selectedKey ?? string.Empty)]
+            LocalizationLookup.ResolveValue(
+                ProviderKey,
+                LocalizationLookup.NormalizeNamespace(Namespace),
+                selectedKey ?? string.Empty)
             ?? selectedKey
             ?? string.Empty;
 

@@ -97,13 +97,6 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             return string.Empty;
         }
 
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, _normalizedNamespace);
-
-        if (localizationSet is null)
-        {
-            return StringLocalizerExtension.EscapeText(key);
-        }
-
         int argumentCount = Math.Max(0, values.Length - index);
         object?[] arguments = argumentCount == 0 ? [] : new object?[argumentCount];
 
@@ -113,7 +106,7 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             arguments[i] = IsUnset(value) ? string.Empty : value;
         }
 
-        return localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)key, arguments)
+        return LocalizationLookup.ResolveFormatted(ProviderKey, _normalizedNamespace, key, CultureInfo.CurrentCulture, arguments)
             ?? StringLocalizerExtension.EscapeText(key);
     }
 

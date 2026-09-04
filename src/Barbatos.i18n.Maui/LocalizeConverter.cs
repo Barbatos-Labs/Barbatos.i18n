@@ -31,15 +31,8 @@ public class LocalizeConverter : IValueConverter
             return value;
         }
 
-        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
-
-        if (localizationSet is null)
-        {
-            return stringValue;
-        }
-
         // Fall back to the key itself so an untranslated entry is visible rather than blank.
-        return localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)stringValue) ?? stringValue;
+        return LocalizationLookup.ResolveValue(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace), stringValue) ?? stringValue;
     }
 
     /// <summary>

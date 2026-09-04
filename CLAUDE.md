@@ -60,18 +60,25 @@ it, and do not "fix" it by weakening the assertion without investigating the RES
 A XAML `{i18n:StringLocalizer Text='Key'}` resolves through this chain — you usually need to read all of it:
 
 ```
-markup extension  →  MultiBinding + converter  →  LocalizationLookup.ResolveSet
+markup extension  →  MultiBinding + converter  →  LocalizationLookup.ResolveValue
                   →  ILocalizationProvider     →  LocalizationSet[LocalizationKey]
 ```
 
 - `LocalizationBuilder` collects `LocalizationSet`s and `Build()`s an `ILocalizationProvider`.
 - `LocalizationSet` is an immutable record of `(Name, Culture, Strings)`. `Name` is the "namespace" surfaced in
   XAML as `Namespace='errors'`.
-- **Culture fallback.** `GetLocalizationSet(culture, name)` walks `CultureFallback.EnumerateChain`: the exact
-  culture first, then each parent, ending at the invariant culture — so a set registered for `en` also serves
-  `en-GB`. Each culture is fully considered (unnamed set, then any) before moving to a less specific one, so an
-  exact match never loses to a parent. `GetLocalizationSets(culture)` deliberately stays **exact**, which is how
+- **Culture fallback.** Lookups walk `CultureFallback.EnumerateChain`: the exact culture first, then each
+  parent, ending at the invariant culture — so a set registered for `en` also serves `en-GB`. Each culture is
+  fully considered before moving to a less specific one, so an exact match never loses to a parent.
+  `GetLocalizationSets(culture)` deliberately stays **exact**, which is how
   `GetAllStrings(includeParentCultures: false)` scopes itself.
+- **Set precedence — read this before touching `LocalizationLookup`.** An extension written *without* a
+  `Namespace` means "find this key wherever it lives", so the lookup resolves a **value** by searching every
+  registered set in **registration order**, not by picking one set and indexing it. Resolving to a single set
+  broke the WPF sample outright: `FromIni("Locales.en-US.ini")` derives the name `"en-us"`, so *every* file the
+  sample registers is named, and the only unnamed set is the handful of keys a YAML file contributes to its
+  implicit default namespace — nearly every string rendered as its raw key. Registration order is why
+  `LocalizationBuilder` keeps a `List`, not a `HashSet`. `MultiSetResolutionTests` pins this.
 - `LocalizationKey` is a `readonly struct` that **normalizes every key**: `:` → `.` and `ToLowerInvariant()`.
   This is why `Header:Title`, `header.TITLE` and `Header.Title` are the same key, and why enum member names work
   as keys regardless of casing. It implicitly converts to/from `string`, so normalization is often invisible at
@@ -85,7 +92,8 @@ This trips people up constantly. There are **two** registries and every consumer
 2. `LocalizationProviderFactory` — a static `ConcurrentDictionary`, used by the non-DI wiring
    (`Application.UseStringLocalizer`, `MauiAppBuilder.UseStringLocalizer`).
 
-`LocalizationLookup.ResolveSet` (one copy per UI package) encapsulates "DI first, static fallback". **Use it** —
+`LocalizationLookup.ResolveValue`/`ResolveFormatted` (one copy per UI package) encapsulate "DI first,
+static fallback". **Use them** —
 do not hand-roll the `GetProvider(...) ?? LocalizationProviderFactory.GetInstance(...)` pair again; it used to be
 duplicated at ten sites (five per UI package) and resolved each registry twice per lookup.
 
