@@ -44,4 +44,20 @@ public sealed class ResourceNameCollisionTests
 
         builder.Build().GetLocalizationSet(Culture, "translations").Should().NotBeNull();
     }
+
+    [Fact]
+    public void AFolderMerelyStartingWithTheAssemblyName_IsNotTruncated()
+    {
+        // "Barbatos.i18n.Ini.UnitTestsExtra" starts with the assembly name but is a different segment. Stripping
+        // the prefix without checking for the separator turns it into "Extra" and the resource is lost - the
+        // shape an assembly called "App" hits with a folder called "AppData".
+        LocalizationBuilder builder = new();
+
+        builder.FromIni("Barbatos.i18n.Ini.UnitTestsExtra.Foo-en-US.ini", Culture);
+        builder.SetCulture(Culture);
+
+        builder.Build().GetLocalizationSets(Culture)
+            .Select(s => s["Greeting"])
+            .Should().Contain("Hello from a prefixed folder");
+    }
 }

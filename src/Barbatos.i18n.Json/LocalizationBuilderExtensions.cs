@@ -67,7 +67,7 @@ public static class LocalizationBuilderExtensions
         CultureInfo culture
     )
     {
-        if (!path.EndsWith(".json"))
+        if (!path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
                 $"Parameter {nameof(path)} in {nameof(FromJson)} must be path to the JSON file."

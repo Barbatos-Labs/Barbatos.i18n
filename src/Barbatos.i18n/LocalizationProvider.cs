@@ -31,8 +31,9 @@ public class LocalizationProvider : ILocalizationProvider
     /// <param name="localizationSets">The sets this provider serves.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="localizationSets"/> is null.</exception>
     /// <remarks>
-    /// The sets are copied up front. Holding the sequence itself would re-run a deferred query on every lookup,
-    /// and lookups sit on the hot path: each culture change re-evaluates every live binding on screen.
+    /// The sets, and the strings inside them, are copied up front. Holding the sequences themselves would re-run
+    /// a deferred query on every lookup, and lookups sit on the hot path: each culture change re-evaluates every
+    /// live binding on screen. A YAML file's strings arrived as a LINQ projection, so every key read re-ran it.
     /// </remarks>
     public LocalizationProvider(CultureInfo currentCulture, IEnumerable<LocalizationSet> localizationSets)
     {
@@ -42,7 +43,7 @@ public class LocalizationProvider : ILocalizationProvider
         }
 
         _currentCulture = currentCulture;
-        _localizationSets = localizationSets.ToArray();
+        _localizationSets = localizationSets.Select(Materialize).ToArray();
 
         // CultureInfo.Equals compares names ordinally, so grouping by name preserves the previous matching
         // exactly while making the per-culture lookup a hash probe. Registration order is kept within a group,
@@ -50,6 +51,32 @@ public class LocalizationProvider : ILocalizationProvider
         _setsByCulture = _localizationSets
             .GroupBy(s => s.Culture.Name, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Copies a set's strings into a dictionary so that every key read is a hash probe.
+    /// </summary>
+    /// <param name="set">The set as it was registered.</param>
+    /// <returns>The set, backed by a dictionary.</returns>
+    /// <remarks>
+    /// A set already backed by a dictionary is returned untouched. Otherwise the strings are copied, and the
+    /// first entry for a key wins, matching the order the previous linear scan reported.
+    /// </remarks>
+    private static LocalizationSet Materialize(LocalizationSet set)
+    {
+        if (set.Strings is IReadOnlyDictionary<LocalizationKey, string?> or IDictionary<LocalizationKey, string?>)
+        {
+            return set;
+        }
+
+        Dictionary<LocalizationKey, string?> strings = new();
+
+        foreach (KeyValuePair<LocalizationKey, string?> pair in set.Strings)
+        {
+            _ = strings.TryAdd(pair.Key, pair.Value);
+        }
+
+        return set with { Strings = strings };
     }
 
     /// <inheritdoc />

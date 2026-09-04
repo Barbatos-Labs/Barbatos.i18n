@@ -31,14 +31,32 @@ public static class EmbeddedResourceReader
             return ReadResource(assembly, NormalizeSeparators(path));
         }
 
-        // Only a leading assembly name is stripped, and only once. Removing every occurrence corrupted any path
-        // in which the name appears again - with a short assembly name such as "App" or "Core", a folder or file
-        // containing it lost those characters and the resource was reported missing.
-        string relativePath = path.StartsWith(assemblyName, StringComparison.InvariantCultureIgnoreCase)
+        // Only a leading assembly name is stripped, once, and only when it ends on a segment boundary. Removing
+        // every occurrence corrupted any path in which the name appears again, and matching a bare prefix turned
+        // a folder that merely starts with it - "AppData" under an assembly called "App" - into "Data". Either
+        // way the resource was reported missing.
+        string relativePath = StartsWithSegment(path, assemblyName)
             ? path.Substring(assemblyName.Length)
             : path;
 
         return ReadResource(assembly, NormalizeSeparators(assemblyName + "." + relativePath));
+    }
+
+    /// <summary>
+    /// Determines whether a path begins with the assembly name as a whole segment.
+    /// </summary>
+    /// <param name="path">The resource path.</param>
+    /// <param name="assemblyName">The assembly name.</param>
+    /// <returns>True when the path is the assembly name, or the assembly name followed by a separator.</returns>
+    private static bool StartsWithSegment(string path, string assemblyName)
+    {
+        if (!path.StartsWith(assemblyName, StringComparison.InvariantCultureIgnoreCase))
+        {
+            return false;
+        }
+
+        return path.Length == assemblyName.Length
+            || path[assemblyName.Length] is '.' or '/' or '\\';
     }
 
     /// <summary>

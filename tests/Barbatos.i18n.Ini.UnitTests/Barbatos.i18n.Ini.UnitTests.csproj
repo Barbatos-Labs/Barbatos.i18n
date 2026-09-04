@@ -23,6 +23,7 @@
     <EmbeddedResource Include="Resources\Translations-en-US.ini" />
     <EmbeddedResource Include="Resources\Translations-ko-KR.ini" />
     <EmbeddedResource Include="Resources\Barbatos.i18n.Ini.UnitTests-en-US.ini" />
+    <EmbeddedResource Include="Barbatos.i18n.Ini.UnitTestsExtra\Foo-en-US.ini" />
   </ItemGroup>
 
   <ItemGroup>

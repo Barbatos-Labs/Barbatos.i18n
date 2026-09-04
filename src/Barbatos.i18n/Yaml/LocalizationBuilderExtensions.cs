@@ -45,7 +45,10 @@ public static class LocalizationBuilderExtensions
         CultureInfo culture
     )
     {
-        if (!(path.EndsWith(".yml") || path.EndsWith(".yaml")))
+        if (
+            !path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)
+            && !path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase)
+        )
         {
             throw new ArgumentException(
                 $"Parameter {nameof(path)} in {nameof(FromYaml)} must be path to the YAML file."
