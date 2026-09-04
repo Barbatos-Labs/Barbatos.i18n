@@ -66,30 +66,7 @@ public static class LocalizationBuilderExtensions
 
         IEnumerable<KeyValuePair<LocalizationKey, string?>> localizations = IniLocalizationParser.Parse(contents);
 
-        string fileName = path;
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
-            // Remove extension, e.g. "Translations-en-US.ini" -> "Translations-en-US"
-            fileName = fileName.Substring(0, lastDotIndex);
-            
-            // Extract base name, e.g. "Resources.v1.Translations-en-US" -> "Translations-en-US"
-            int lastDotBeforeExtension = fileName.LastIndexOf('.');
-            if (lastDotBeforeExtension >= 0)
-            {
-                fileName = fileName.Substring(lastDotBeforeExtension + 1);
-            }
-        }
-        
-        string name = fileName;
-        // Typically remove culture code from name, like "Translations-en-US" -> "Translations"
-        int cultureIndex = name.IndexOf("-" + culture.Name, StringComparison.OrdinalIgnoreCase);
-        if (cultureIndex > 0)
-        {
-            name = name.Substring(0, cultureIndex);
-        }
-
-        builder.AddLocalization(name.ToLowerInvariant(), culture, localizations);
+        builder.AddLocalization(new LocalizationSet(LocalizationSetNaming.DeriveName(path, culture), culture, localizations));
 
         return builder;
     }

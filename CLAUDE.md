@@ -47,11 +47,12 @@ Notes that will save time:
 - Packages are produced by `GeneratePackageOnBuild=true`; a Release build with `-p:SourceLinkEnabled=true` also
   strong-name-signs with `src/barbatos.snk`.
 
-### Known-failing test
+### A test that used to fail
 
 `Barbatos.i18n.UnitTests.LocalizationBuilderTests.FromResource_ShouldAllowLookupUsingTestResourcePropertyDirectly`
-fails on a clean checkout (ko-KR RESX lookup returns null). It is pre-existing — do not assume your change caused
-it, and do not "fix" it by weakening the assertion without investigating the RESX satellite loading path.
+fails on `main` (ko-KR RESX lookup returns null) and **passes on this branch** — the culture-fallback work fixed
+it. Treat a failure there as a real regression in the RESX satellite loading path, not as pre-existing noise,
+and never "fix" it by weakening the assertion.
 
 ## Architecture
 
@@ -160,10 +161,16 @@ Each format package follows the same shape — copy `Barbatos.i18n.Ini` as the t
   and `From<Format>String(name, culture, contents)`.
 - Content is read by `EmbeddedResourceReader.ReadToEnd(path, assembly)`, so **files must be `EmbeddedResource`**
   and the path is dot-notation matching the logical resource name (`"Locales.Locales-en-US.json"`), not a file path.
-- The set `Name` is derived from the file name minus extension minus the `-{culture}` suffix, lowercased —
-  `Translations-en-US.ini` becomes namespace `translations`.
-- The parser returns `IEnumerable<KeyValuePair<LocalizationKey, string?>>`; failures should throw
-  `LocalizationBuilderException`, not a raw parser exception.
+- The set `Name` comes from `LocalizationSetNaming.DeriveName(path, culture)` — **call it, do not re-derive**;
+  the rule used to be copy-pasted into all three packages. It is the file name minus extension, folders and the
+  `-{culture}` suffix, lowercased, so `Translations-en-US.ini` becomes `translations`. When nothing but the
+  culture is left, the **folder** names the set: `Locales.en-US.ini` becomes `locales`, so all three languages
+  share one namespace instead of becoming `en-us`/`vi-vn`/`ko-kr`. It never returns null, because
+  `LocalizationBuilder.AddLocalization` still throws on a duplicate name+culture and an unnamed set would
+  collide with the default namespace a YAML file contributes. `LocalizationSetNamingTests` pins all of it.
+- The parser returns `IEnumerable<KeyValuePair<LocalizationKey, string?>>` — make it a **`Dictionary`**, since
+  `LocalizationSet`'s indexer only takes its O(1) path for dictionary-backed strings. Failures should throw
+  `LocalizationBuilderException`, not a raw parser exception (`JsonReading.ParseDocument` shows the wrapping).
 
 ### DI layer
 

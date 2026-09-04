@@ -20,8 +20,18 @@ public record LocalizationSet(
 )
 {
     /// <summary>
-    /// Gets the localized value for the specified string, optionally extracting the property name from a property expression (e.g., <c>TestResource.Test</c>).
+    /// Gets the localized value for the specified string, falling back to the name of the property the value
+    /// came from (e.g. <c>TestResource.Test</c> resolves the "Test" entry).
     /// </summary>
+    /// <param name="value">The key to look up.</param>
+    /// <param name="expression">The caller's source text for <paramref name="value"/>, supplied by the compiler.</param>
+    /// <remarks>
+    /// The value that was actually passed wins. Guessing from the caller's property name first meant that
+    /// <c>set[row.Status]</c>, with a Status of "Active", returned the translation of the key "Status" whenever
+    /// the set happened to carry one - the wrong string, with nothing to indicate it. The property-name guess
+    /// exists for generated RESX designers, whose properties return a translation rather than a key, so it only
+    /// has to apply once the value itself has failed to resolve.
+    /// </remarks>
     public string? this[string? value, [CallerArgumentExpression(nameof(value))] string expression = ""]
     {
         get
@@ -31,20 +41,23 @@ public record LocalizationSet(
                 return null;
             }
 
+            if (this[new LocalizationKey(value)] is string direct)
+            {
+                return direct;
+            }
+
             if (!string.IsNullOrWhiteSpace(expression))
             {
                 string trimmed = expression.Trim();
                 if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
                 {
                     string propertyName = trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
-                    if (this[new LocalizationKey(propertyName)] is string result)
-                    {
-                        return result;
-                    }
+
+                    return this[new LocalizationKey(propertyName)];
                 }
             }
 
-            return this[new LocalizationKey(value)];
+            return null;
         }
     }
 

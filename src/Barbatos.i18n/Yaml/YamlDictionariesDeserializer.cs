@@ -49,7 +49,7 @@ public static class YamlDictionariesDeserializer
             }
 
             // Check for end of namespace
-            if (line.IndexOf(trimmedLine) < currentIndentation)
+            if (line.IndexOf(trimmedLine, StringComparison.Ordinal) < currentIndentation)
             {
                 currentNamespace = DefaultNamespace;
                 currentIndentation = 0;

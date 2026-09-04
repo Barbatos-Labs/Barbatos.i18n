@@ -80,28 +80,9 @@ public static class LocalizationBuilderExtensions
             throw new LocalizationBuilderException($"Could not find the JSON localization resource: {path}");
         }
 
-        string fileName = path;
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
-            fileName = fileName.Substring(0, lastDotIndex);
-            int lastDotBeforeExtension = fileName.LastIndexOf('.');
-            if (lastDotBeforeExtension >= 0)
-            {
-                fileName = fileName.Substring(lastDotBeforeExtension + 1);
-            }
-        }
-        
-        string name = fileName;
-        int cultureIndex = name.IndexOf("-" + culture.Name, StringComparison.OrdinalIgnoreCase);
-        if (cultureIndex > 0)
-        {
-            name = name.Substring(0, cultureIndex);
-        }
-
         builder.AddLocalization(
             new LocalizationSet(
-                name.ToLowerInvariant(),
+                LocalizationSetNaming.DeriveName(path, culture),
                 culture,
                 ComputeLocalizationPairs(contents)
             )

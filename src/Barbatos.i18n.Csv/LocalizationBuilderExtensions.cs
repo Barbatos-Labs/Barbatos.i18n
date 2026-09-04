@@ -54,26 +54,7 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentException($"The CSV file {path} is formatted as a multi-culture file. Please use the FromCsv overload without the CultureInfo parameter.");
         }
 
-        string fileName = path;
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
-            fileName = fileName.Substring(0, lastDotIndex);
-            int lastDotBeforeExtension = fileName.LastIndexOf('.');
-            if (lastDotBeforeExtension >= 0)
-            {
-                fileName = fileName.Substring(lastDotBeforeExtension + 1);
-            }
-        }
-        
-        string name = fileName;
-        int cultureIndex = name.IndexOf("-" + culture.Name, StringComparison.OrdinalIgnoreCase);
-        if (cultureIndex > 0)
-        {
-            name = name.Substring(0, cultureIndex);
-        }
-
-        builder.AddLocalization(name.ToLowerInvariant(), culture, localizations);
+        builder.AddLocalization(new LocalizationSet(LocalizationSetNaming.DeriveName(path, culture), culture, localizations));
 
         return builder;
     }
@@ -138,24 +119,13 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentException($"The CSV file {path} is formatted as a single-culture file. Please use the FromCsv overload with the CultureInfo parameter.");
         }
 
-        string fileName = path;
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
-            fileName = fileName.Substring(0, lastDotIndex);
-            int lastDotBeforeExtension = fileName.LastIndexOf('.');
-            if (lastDotBeforeExtension >= 0)
-            {
-                fileName = fileName.Substring(lastDotBeforeExtension + 1);
-            }
-        }
-        
-        string name = fileName.ToLowerInvariant();
+        // One file carries every culture, so the name is derived once, against the invariant culture: there is
+        // no per-culture suffix to strip here.
+        string? name = LocalizationSetNaming.DeriveName(path, CultureInfo.InvariantCulture);
 
         foreach (var kvp in parsedResults)
         {
-            CultureInfo culture = new CultureInfo(kvp.Key);
-            builder.AddLocalization(name, culture, kvp.Value);
+            builder.AddLocalization(new LocalizationSet(name, new CultureInfo(kvp.Key), kvp.Value));
         }
 
         return builder;

@@ -92,11 +92,19 @@ internal static class CsvLocalizationParser
             }
         }
         
-        // Convert List to IEnumerable for the return type
+        // A dictionary, not the accumulating list: LocalizationSet indexes a set by key on every lookup, and
+        // only takes its O(1) path when the strings are dictionary-backed. Every other parser already returns
+        // one, so a CSV-backed set was alone in scanning all of its entries per key.
         Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> finalResults = new();
         foreach (var kvp in results)
         {
-            finalResults[kvp.Key] = kvp.Value;
+            Dictionary<LocalizationKey, string?> byKey = new();
+            foreach (KeyValuePair<LocalizationKey, string?> pair in kvp.Value)
+            {
+                byKey[pair.Key] = pair.Value;
+            }
+
+            finalResults[kvp.Key] = byKey;
         }
         return finalResults;
     }

@@ -43,9 +43,15 @@ public class LocalizationBuilder
     /// Adds a localization set to the collection.
     /// </summary>
     /// <param name="localization">The localization set to add.</param>
-    /// <exception cref="InvalidOperationException">Thrown when a localization set for the same culture already exists in the collection.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="localization"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when a localization set with the same name already exists for the culture.</exception>
     public virtual void AddLocalization(LocalizationSet localization)
     {
+        if (localization is null)
+        {
+            throw new ArgumentNullException(nameof(localization));
+        }
+
         if (
             _localizations.Any(x =>
                 x.Name == localization.Name && x.Culture.Equals(localization.Culture)
