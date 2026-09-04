@@ -241,6 +241,9 @@ not want to know which file a key lives in.
 
 ## Traps
 
+- **A `MauiAppBuilder` *can* be constructed in tests**, even though a `VisualElement` cannot. `MauiApp.CreateBuilder()`
+  works, so `UseStringLocalizer` and the private `DefaultLocalizationCultureManager` it registers are testable
+  through `builder.Services` without ever building the app. `DefaultCultureManagerTests` does exactly that.
 - **MAUI `VisualElement` cannot be constructed in the unit-test host.** Instantiating a `Picker`, `Label`, or any
   `BindableObject` throws `REGDB_E_CLASSNOTREG` because `ViewHandler`'s static constructor needs the WinUI runtime.
   MAUI tests must stay at the converter/extension level; element-level behaviour is verified on the WPF side,
