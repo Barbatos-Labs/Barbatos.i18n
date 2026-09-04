@@ -30,21 +30,38 @@ public partial class HomeViewModel : ObservableObject
     {
         if (value != null)
         {
-            // Thay đổi ngôn ngữ UI. Tính năng Formatting Culture sẽ được thư viện DI tự động đồng bộ ngầm!
+            // Switches the UI language. The DI layer keeps the formatting culture in sync under the hood.
+            // Every {i18n:...} binding re-evaluates through LocalizationSource, so the page does not need
+            // re-navigating and CurrentDate / Price / Distance no longer need a manual OnPropertyChanged.
             System.Windows.Application.Current.SetLocalizationCulture(value);
-            
-            // Force property change to refresh the bindings that rely solely on CurrentDate or Price
-            OnPropertyChanged(nameof(CurrentDate));
-            OnPropertyChanged(nameof(Price));
-            OnPropertyChanged(nameof(Distance));
         }
     }
+
+    /// <summary>
+    /// Raw localization keys, translated by the item template. No converter resource to declare.
+    /// </summary>
     public ObservableCollection<string> AvailableOptions { get; } = new()
     {
         "ComboBoxItem1",
         "ComboBoxItem2",
         "ComboBoxItem3"
     };
+
+    /// <summary>
+    /// Enum members double as localization keys: OrderStatus.Active resolves the "Active" entry.
+    /// </summary>
+    public IReadOnlyList<OrderStatus> StatusOptions { get; } = Enum.GetValues<OrderStatus>();
+
+    /// <summary>
+    /// Rows whose translation key lives in the item itself. This is what BindText is for.
+    /// </summary>
+    public ObservableCollection<ProductRow> Products { get; } = new()
+    {
+        new ProductRow("Barbatos Keyboard", OrderStatus.Active, 12),
+        new ProductRow("Barbatos Mouse", OrderStatus.Pending, 1),
+        new ProductRow("Barbatos Headset", OrderStatus.Archived, 0)
+    };
+
     [ObservableProperty]
     private int _appleCount = 1;
 
@@ -85,9 +102,6 @@ public partial class HomeViewModel : ObservableObject
     private void ShowMessage()
     {
         // Simple: Use ICompositeStringLocalizer to access keys from ANY localization set (RESX, JSON, YAML, INI, CSV)
-        // var localizer = ((App)System.Windows.Application.Current).ServiceProvider.GetRequiredService<Barbatos.i18n.DependencyInjection.ICompositeStringLocalizer>();
-
-        // Simple: Use ICompositeStringLocalizer to access keys from ANY localization set (RESX, JSON, YAML, INI, CSV)
         var localizer = ((App)System.Windows.Application.Current).ServiceProvider.GetRequiredService<Barbatos.i18n.DependencyInjection.ICompositeStringLocalizer>();
 
         string title = localizer["MessageTitle"];
@@ -95,4 +109,19 @@ public partial class HomeViewModel : ObservableObject
 
         System.Windows.MessageBox.Show(message, title, System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
     }
+}
+
+/// <summary>
+/// Status is bound straight to the markup extension: the enum member name is the localization key.
+/// </summary>
+public record ProductRow(string Name, OrderStatus Status, int Stock);
+
+/// <summary>
+/// Each member name matches a key in the localization files, so the enum needs no lookup table.
+/// </summary>
+public enum OrderStatus
+{
+    Active,
+    Pending,
+    Archived
 }

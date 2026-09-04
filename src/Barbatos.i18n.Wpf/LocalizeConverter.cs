@@ -31,22 +31,15 @@ public sealed class LocalizeConverter : IValueConverter
             return value ?? string.Empty;
         }
 
-        CultureInfo currentCulture =
-            WpfLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-
-        string? selectedNamespace = Namespace?.ToLowerInvariant();
-
-        LocalizationSet? localizationSet = WpfLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
+        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
 
         if (localizationSet is null)
         {
             return key;
         }
 
-        return localizationSet.Format(culture, key);
+        // Fall back to the key itself so an untranslated entry is visible rather than blank.
+        return localizationSet.Format(culture, key) ?? key;
     }
 
     /// <summary>

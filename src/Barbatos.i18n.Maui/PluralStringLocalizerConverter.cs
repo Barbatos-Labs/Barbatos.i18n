@@ -6,10 +6,21 @@
 namespace Barbatos.i18n.Maui;
 
 /// <summary>
-/// Provides a multi value converter that localizes strings in XAML.
+/// Provides a multi value converter that localizes strings in XAML, supporting both singular and plural forms.
 /// </summary>
+/// <remarks>
+/// The converter reads the values of a <see cref="MultiBinding"/> in a fixed order: an optional culture slot
+/// produced by <see cref="LocalizationSource"/>, an optional singular key, an optional plural key, and finally
+/// the count. <see cref="PluralStringLocalizerExtension"/> assembles the bindings to match.
+/// </remarks>
 public sealed class PluralStringLocalizerConverter : IMultiValueConverter
 {
+    private readonly string? _normalizedNamespace;
+    private readonly bool _hasCultureSlot;
+    private readonly bool _keyFromBinding;
+    private readonly bool _pluralKeyFromBinding;
+    private readonly int? _staticCount;
+
     /// <summary>
     /// Gets or sets the text to be localized.
     /// </summary>
@@ -31,22 +42,54 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
     public string ProviderKey { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="PluralStringLocalizerConverter"/> class.
+    /// Initializes a new instance of the <see cref="PluralStringLocalizerConverter"/> class whose single bound
+    /// value is the count.
     /// </summary>
     /// <param name="text">The text.</param>
     /// <param name="pluralText">The plural text.</param>
     /// <param name="textNamespace">The namespace.</param>
     /// <param name="providerKey">The provider key.</param>
     public PluralStringLocalizerConverter(string? text, string? pluralText, string? textNamespace, string providerKey)
+        : this(text, pluralText, textNamespace, providerKey, hasCultureSlot: false, keyFromBinding: false, pluralKeyFromBinding: false, staticCount: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PluralStringLocalizerConverter"/> class, describing which
+    /// leading values of the multi-binding are reserved.
+    /// </summary>
+    /// <param name="text">The singular key, or null when <paramref name="keyFromBinding"/> is true.</param>
+    /// <param name="pluralText">The plural key, or null when <paramref name="pluralKeyFromBinding"/> is true.</param>
+    /// <param name="textNamespace">The namespace.</param>
+    /// <param name="providerKey">The provider key.</param>
+    /// <param name="hasCultureSlot">Whether the first value is the <see cref="LocalizationSource"/> culture and must be skipped.</param>
+    /// <param name="keyFromBinding">Whether the singular key is carried by a bound value.</param>
+    /// <param name="pluralKeyFromBinding">Whether the plural key is carried by a bound value.</param>
+    /// <param name="staticCount">The count to use when no bound value carries one.</param>
+    public PluralStringLocalizerConverter(
+        string? text,
+        string? pluralText,
+        string? textNamespace,
+        string providerKey,
+        bool hasCultureSlot,
+        bool keyFromBinding,
+        bool pluralKeyFromBinding,
+        int? staticCount
+    )
     {
         Text = text;
         PluralText = pluralText;
         Namespace = textNamespace;
         ProviderKey = providerKey;
+        _normalizedNamespace = LocalizationLookup.NormalizeNamespace(textNamespace);
+        _hasCultureSlot = hasCultureSlot;
+        _keyFromBinding = keyFromBinding;
+        _pluralKeyFromBinding = pluralKeyFromBinding;
+        _staticCount = staticCount;
     }
 
     /// <summary>
-    /// Converts a value.
+    /// Selects the singular or plural translation according to the count and fills its placeholder with it.
     /// </summary>
     /// <param name="values">The array of values that the source bindings in the <see cref="MultiBinding"/> produces.</param>
     /// <param name="targetType">The type of the binding target property.</param>
@@ -55,50 +98,47 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
     /// <returns>A converted value. If the method returns null, the valid null value is used.</returns>
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        if (string.IsNullOrEmpty(Text) && string.IsNullOrEmpty(PluralText))
+        values ??= [];
+
+        int index = _hasCultureSlot ? 1 : 0;
+
+        string? key = Text;
+        if (_keyFromBinding)
+        {
+            key = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
+            index++;
+        }
+
+        string? pluralKey = PluralText;
+        if (_pluralKeyFromBinding)
+        {
+            pluralKey = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
+            index++;
+        }
+
+        if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(pluralKey))
         {
             return string.Empty;
         }
 
-        int count = 0;
-        if (values.Length > 0 && values[0] is int countValue)
+        int count = _staticCount ?? 0;
+        if (index < values.Length && ReadCount(values[index]) is int boundCount)
         {
-            count = countValue;
+            count = boundCount;
         }
 
-        CultureInfo currentCulture =
-            MauiLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-
-        string? selectedNamespace = Namespace?.ToLowerInvariant();
-
-        LocalizationSet? localizationSet = MauiLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
-
-        if (localizationSet is null)
+        // Fall back to whichever form was actually supplied when the preferred one is missing.
+        string? selectedKey = count > 1 ? pluralKey : key;
+        if (string.IsNullOrEmpty(selectedKey))
         {
-            return count > 1 ? EscapeText(PluralText) ?? string.Empty : EscapeText(Text) ?? string.Empty;
+            selectedKey = count > 1 ? key : pluralKey;
         }
 
-        string localizedString;
+        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, _normalizedNamespace);
 
-        if (count > 1)
-        {
-            var keyStr = PluralText ?? string.Empty;
-            localizedString =
-                localizationSet.Strings.FirstOrDefault(s => s.Key == (LocalizationKey)keyStr).Value
-                ?? EscapeText(PluralText)
-                ?? string.Empty;
-        }
-        else
-        {
-            var keyStr = Text ?? string.Empty;
-            localizedString =
-                localizationSet.Strings.FirstOrDefault(s => s.Key == (LocalizationKey)keyStr).Value
-                ?? EscapeText(Text)
-                ?? string.Empty;
-        }
+        string localizedString =
+            localizationSet?[(LocalizationKey)(selectedKey ?? string.Empty)]
+            ?? StringLocalizerExtension.EscapeText(selectedKey);
 
         return string.Format(CultureInfo.CurrentCulture, localizedString, count);
     }
@@ -116,18 +156,25 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
         throw new NotSupportedException();
     }
 
-    private static string EscapeText(string? text)
+    /// <summary>
+    /// Reads a count out of a bound value.
+    /// </summary>
+    /// <param name="value">The bound value.</param>
+    /// <returns>The count, or null when the value carries none.</returns>
+    private static int? ReadCount(object? value)
     {
-        if (text is null)
+        if (StringLocalizerConverter.IsUnset(value))
         {
-            return string.Empty;
+            return null;
         }
 
-        return text.Replace("&amp;", "&")
-            .Replace("&lt;", "<")
-            .Replace("&gt;", ">")
-            .Replace("&quot;", "\"")
-            .Replace("&apos;", "'")
-            .Trim();
+        if (value is int count)
+        {
+            return count;
+        }
+
+        return int.TryParse(value!.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int parsed)
+            ? parsed
+            : null;
     }
 }

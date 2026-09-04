@@ -29,6 +29,8 @@ Contains the core primitives used to fetch, manage, and build localization sets.
 | [`LocalizationKey`](#localizationkey-struct) | Represents a normalized key (e.g. `header.title`) used for localization lookups. |
 | [`LocalizationCultureManager`](#localizationculturemanager-class) | The default implementation of `ILocalizationCultureManager`. |
 | [`LocalizationProvider`](#localizationprovider-class) | The default implementation of `ILocalizationProvider`. |
+| [`LocalizationNotifier`](#localizationnotifier-class) | Broadcasts culture changes so presentation layers can refresh rendered translations. |
+| [`LocalizationChangedEventArgs`](#localizationnotifier-class) | Carries the new culture to `LocalizationNotifier.CultureChanged` handlers. |
 
 ### Interfaces
 
@@ -178,6 +180,36 @@ Once the `LocalizationBuilder` finishes parsing files, it generates a `Localizat
 
 ---
 
+### `LocalizationNotifier` Class
+
+Broadcasts localization changes so that presentation layers can refresh already-rendered translations.
+
+```csharp
+public static class LocalizationNotifier
+```
+
+#### Events
+- **`CultureChanged`** (`EventHandler<LocalizationChangedEventArgs>?`): Raised after the localization culture has been changed.
+
+#### Methods
+- **`NotifyCultureChanged(CultureInfo culture)`**: Raises `CultureChanged`. Throws `ArgumentNullException` when `culture` is null.
+
+#### `LocalizationChangedEventArgs`
+
+```csharp
+public sealed class LocalizationChangedEventArgs : EventArgs
+```
+
+- **`Culture`** (`CultureInfo`): The culture that localization switched to.
+
+#### Remarks
+
+The core library resolves translations on demand and holds no reference to any UI element, so a culture switch alone cannot repaint a view. Every `ILocalizationCultureManager` shipped with Barbatos.i18n raises this event **after** applying the new culture, which is what lets [`LocalizationSource`](#localizationsource-class) invalidate WPF and MAUI bindings in place.
+
+Handlers run on the thread that performed the culture change, which is not necessarily the UI thread — presentation layers marshal to their own dispatcher. Because the event is static it lives for the lifetime of the process: subscribe from long-lived objects, or unsubscribe explicitly.
+
+---
+
 ### `ILocalizationProvider` Interface
 
 Provides functionality to retrieve localization sets for specific cultures.
@@ -264,6 +296,7 @@ Provides XAML elements to bind localized strings dynamically in WPF applications
 | [`StringLocalizerExtension`](#stringlocalizerextension-class) | The core `MarkupExtension` (`{i18n:StringLocalizer}`) used in XAML. |
 | [`PluralStringLocalizerExtension`](#pluralstringlocalizerextension-class) | A `MarkupExtension` (`{i18n:PluralStringLocalizer}`) for handling pluralization. |
 | [`LocalizeConverter`](#localizeconverter-class) | An `IValueConverter` for translating bound keys inside `DataTemplate`s. |
+| [`LocalizationSource`](#localizationsource-class) | The observable that makes live XAML translations re-evaluate on a culture change. |
 
 ### Extension Methods
 
@@ -316,7 +349,8 @@ The primary way to retrieve localized strings in XAML. Inherits from `MarkupExte
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Text` | `string` | **(Required)** The localization key to resolve. |
+| `Text` | `string` | **(Required, unless `BindText` is set)** The localization key to resolve. |
+| `BindText` | `BindingBase?` | A data-binding supplying the localization key at runtime. Takes precedence over `Text`. |
 | `Namespace` | `string?` | The specific resource namespace to look in. |
 | `ProviderKey` | `string?` | The name of the specific DI provider to query. |
 | `StringFormat` | `string?` | A standard `.NET` string format string (e.g. `"Price: {0}"`). |
@@ -324,15 +358,29 @@ The primary way to retrieve localized strings in XAML. Inherits from `MarkupExte
 | `Arg2` - `Arg5` | `object?` | Additional static arguments (indices 1 to 4). |
 | `BindArg` | `BindingBase?` | Dynamic data-binding for formatting (index 0). |
 | `BindArg2` - `BindArg5`| `BindingBase?` | Additional dynamic data-bindings (indices 1 to 4). |
+| `Live` | `bool?` | Overrides whether the translation re-evaluates on a culture change. See Remarks. |
 
 #### Remarks
-When `BindArg` properties are provided, the extension sets up a `MultiBinding` underneath to automatically refresh the string whenever the bound view model property changes or when the global language changes.
+
+The extension emits a `MultiBinding` whose converter resolves the key. The bound values are read in a fixed order: the [`LocalizationSource`](#localizationsource-class) culture (when live), the key (when `BindText` is set), then the format arguments.
+
+**`BindText`** is how you localize keys that live in the data rather than the markup — `ItemsControl`, `ListView`, `DataGrid`, `ComboBox` items. `Text` is a plain CLR property and cannot accept a binding; `BindText` is typed `BindingBase` and can. Unlike `Text`, the resolved key is used as-is, without XML entity unescaping.
+
+The bound value need not be a string: the key is read from the value itself, so an **enum member is the key** (`OrderStatus.Active` resolves the `Active` entry). Matching is case-insensitive because `LocalizationKey` lower-cases every key. A `null` or unset value yields an empty string; a key with no translation yields the key itself.
+
+**`Live`** controls the culture watch:
+
+| Value | Behaviour |
+|-------|-----------|
+| unset *(default)* | WPF: live when the target is a `DependencyProperty`, a one-off string otherwise — so `Setter.Value` and other non-bindable targets keep working. MAUI: always live. |
+| `True` | Always emit a live binding. |
+| `False` | Never watch the culture; resolve once at load time. |
 
 ---
 
 ### `PluralStringLocalizerExtension` Class
 
-Handles pluralization in XAML based on a bound count. Inherits from `StringLocalizerExtension`.
+Handles pluralization in XAML based on a bound count. Inherits from `MarkupExtension` (WPF) / implements `IMarkupExtension<BindingBase>` (MAUI).
 
 ```xml
 <TextBlock Text="{i18n:PluralStringLocalizer Text='Singular', PluralText='Plural', BindCount={Binding Count}}" />
@@ -342,13 +390,19 @@ Handles pluralization in XAML based on a bound count. Inherits from `StringLocal
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Text` | `string` | **(Required)** The singular localization key. |
-| `PluralText` | `string` | **(Required)** The plural localization key. |
+| `Text` | `string` | **(Required, unless `BindText` is set)** The singular localization key. |
+| `PluralText` | `string` | **(Required, unless `BindPluralText` is set)** The plural localization key. |
+| `BindText` | `BindingBase?` | A data-binding supplying the singular key at runtime. Takes precedence over `Text`. |
+| `BindPluralText` | `BindingBase?` | A data-binding supplying the plural key at runtime. Takes precedence over `PluralText`. |
 | `Count` | `int?` | A static integer determining plurality. |
-| `BindCount` | `BindingBase?` | A dynamic data-binding resolving to an integer to determine plurality. |
+| `BindCount` | `BindingBase?` | A dynamic data-binding resolving to an integer to determine plurality. Takes precedence over `Count`. |
+| `Namespace` | `string?` | The specific resource namespace to look in. |
+| `ProviderKey` | `string?` | The name of the specific DI provider to query. |
+| `StringFormat` | `string?` | A standard `.NET` string format string applied to the final result. |
+| `Live` | `bool?` | Overrides whether the translation re-evaluates on a culture change. Same semantics as on `StringLocalizerExtension`. |
 
 #### Remarks
-The extension evaluates the integer value. If `value > 1`, it fetches the translation associated with `PluralText`; otherwise, it uses `Text`.
+The extension evaluates the integer value. If `value > 1`, it fetches the translation associated with `PluralText`; otherwise, it uses `Text`. If only one of the two forms is supplied, that one is used for both.
 
 ---
 
@@ -365,7 +419,27 @@ An `IValueConverter` designed to translate text bound from an `ItemsSource`. It 
 - **`ProviderKey`** (`string?`): The specific DI provider to query.
 
 #### Remarks
-Use this converter inside `DataTemplate`s where `MarkupExtension`s cannot accept direct property bindings from the template context.
+Supported, but prefer `BindText` on `StringLocalizerExtension` for new code: this converter accepts no format arguments and, being a plain `IValueConverter`, has no source change to re-trigger it when the culture switches, so its text goes stale while live bindings update. Its remaining niche is a property that accepts only a `Binding` and offers no item template, such as MAUI's `Picker.ItemDisplayBinding`.
+
+---
+
+### `LocalizationSource` Class
+
+The process-wide observable that reports the active localization culture to the XAML binding engine. Both `Barbatos.i18n.Wpf` and `Barbatos.i18n.Maui` ship their own copy, in their own namespace.
+
+```csharp
+public sealed class LocalizationSource : INotifyPropertyChanged
+```
+
+#### Properties
+- **`Instance`** (`static LocalizationSource`): The shared instance observed by every live localization binding.
+- **`Culture`** (`CultureInfo`): The culture the most recent localization change switched to.
+
+#### Methods
+- **`Refresh()`**: Forces every live localization binding to re-evaluate against the ambient UI culture. Use it when translation data changes without the culture changing — for example after downloading updated strings and rebuilding the provider.
+
+#### Remarks
+Created lazily on first use, it subscribes to [`LocalizationNotifier.CultureChanged`](#localizationnotifier-class) and re-raises it as `PropertyChanged` on the UI thread (`Application.Current.Dispatcher`, when there is one). The markup extensions add it as a hidden leading value of their `MultiBinding`; bindings observe it weakly, so this does not keep any element alive.
 
 ---
 
@@ -381,6 +455,7 @@ Provides XAML elements to bind localized strings dynamically in .NET MAUI applic
 | `StringLocalizerExtension` | The core `IMarkupExtension` (`{i18n:StringLocalizer}`) used in MAUI XAML. |
 | `PluralStringLocalizerExtension` | An `IMarkupExtension` (`{i18n:PluralStringLocalizer}`) for handling pluralization. |
 | `LocalizeConverter` | An `IValueConverter` for translating bound keys inside `DataTemplate`s. |
+| [`LocalizationSource`](#localizationsource-class) | The observable that makes live XAML translations re-evaluate on a culture change. |
 
 ### Extension Methods
 

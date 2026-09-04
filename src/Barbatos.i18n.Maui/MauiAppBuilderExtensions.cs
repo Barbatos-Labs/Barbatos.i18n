@@ -50,9 +50,9 @@ public static class MauiAppBuilderExtensions
                 sp.GetRequiredService<ILocalizationProviderResolver>().GetProvider()
                 ?? throw new InvalidOperationException("Default localization provider not found."));
 
-            // Register culture manager using the default provider
+            // Register culture manager over the resolver so that every keyed provider follows the culture
             builder.Services.AddSingleton<ILocalizationCultureManager>(sp =>
-                new DefaultLocalizationCultureManager(sp.GetRequiredService<ILocalizationProvider>()));
+                new DefaultLocalizationCultureManager(sp.GetRequiredService<ILocalizationProviderResolver>()));
         }
         else
         {
@@ -65,18 +65,50 @@ public static class MauiAppBuilderExtensions
         return builder;
     }
 
-    private sealed class DefaultLocalizationCultureManager : ILocalizationCultureManager
+    /// <summary>
+    /// The culture manager used when the application does not reference <c>Barbatos.i18n.DependencyInjection</c>.
+    /// Mirrors the behaviour of <c>DependencyInjectionLocalizationCultureManager</c>: it applies the culture to the
+    /// ambient <see cref="CultureInfo"/> properties, forwards it to every registered provider, and announces the
+    /// change through <see cref="LocalizationNotifier"/> so live XAML bindings refresh.
+    /// </summary>
+    private sealed class DefaultLocalizationCultureManager(ILocalizationProviderResolver resolver) : ILocalizationCultureManager
     {
-        private readonly ILocalizationProvider _provider;
-        public DefaultLocalizationCultureManager(ILocalizationProvider provider) => _provider = provider;
-        public void SetCulture(CultureInfo cultureInfo) => _provider.SetCulture(cultureInfo);
-        public void SetCulture(string cultureName) => _provider.SetCulture(new CultureInfo(cultureName));
-        public CultureInfo GetCulture() => _provider.GetCulture();
-        public LocalizationOptions Options => new LocalizationOptions();
+        public LocalizationOptions Options { get; } = new();
+
+        public void SetCulture(string cultureName) => SetCulture(new CultureInfo(cultureName));
+
+        public void SetCulture(CultureInfo cultureInfo)
+        {
+            if (cultureInfo is null)
+            {
+                throw new ArgumentNullException(nameof(cultureInfo));
+            }
+
+            CultureInfo targetCulture = cultureInfo;
+            if (Options.FormatCultureBuilder is not null)
+            {
+                targetCulture = Options.FormatCultureBuilder.Invoke((CultureInfo)cultureInfo.Clone()) ?? cultureInfo;
+            }
+
+            CultureInfo.CurrentUICulture = cultureInfo;
+            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
+            CultureInfo.CurrentCulture = targetCulture;
+            CultureInfo.DefaultThreadCurrentCulture = targetCulture;
+
+            foreach (ILocalizationProvider provider in resolver.GetAllProviders())
+            {
+                provider.SetCulture(cultureInfo);
+            }
+
+            LocalizationNotifier.NotifyCultureChanged(cultureInfo);
+        }
+
+        public CultureInfo GetCulture() => resolver.GetProvider()?.GetCulture() ?? CultureInfo.CurrentCulture;
 
         public IReadOnlyCollection<CultureInfo> GetSupportedCultures()
         {
-            CultureInfo[] cultures = _provider.GetLocalizationSets()
+            CultureInfo[] cultures = resolver.GetAllProviders()
+                .SelectMany(p => p.GetLocalizationSets())
                 .Select(s => s.Culture)
                 .Distinct()
                 .ToArray();

@@ -49,6 +49,8 @@ public class DependencyInjectionLocalizationCultureManager : ILocalizationCultur
         {
             provider.SetCulture(culture);
         }
+
+        LocalizationNotifier.NotifyCultureChanged(culture);
     }
 
     /// <inheritdoc />

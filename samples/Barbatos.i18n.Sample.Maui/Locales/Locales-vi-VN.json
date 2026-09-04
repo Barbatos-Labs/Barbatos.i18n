@@ -18,7 +18,7 @@
   "FirstName": "Tên:",
   "LastName": "Họ:",
   "HeaderPlural": "4. Dịch thuật Số ít / Số nhiều (Pluralization):",
-  "HeaderAttributes": "5. Dịch thuật Picker Items:",
+  "HeaderAttributes": "5. Dịch item danh sách (key chuỗi và enum):",
   "HeaderStringFormat": "6. Tùy chọn định dạng chuỗi (StringFormat):",
   "HeaderNamespace": "7. Sử dụng Namespaces (Trường Name của LocalizationSet):",
   "HeaderProviderKey": "8. Nhiều nguồn dịch (ProviderKey):",
@@ -42,5 +42,11 @@
   "No": "Không",
   "PromptTitle": "Nhập tên",
   "PromptContent": "Vui lòng nhập tên của bạn:",
-  "PromptPlaceholder": "Nhập tên tại đây..."
+  "PromptPlaceholder": "Nhập tên tại đây...",
+  "HeaderBindText": "11. Key động trong danh sách (BindText):",
+  "Active": "Đang bán",
+  "Pending": "Chờ duyệt",
+  "Archived": "Đã lưu trữ",
+  "OneItemInStock": "Còn 1 sản phẩm",
+  "ManyItemsInStock": "Còn {0} sản phẩm"
 }

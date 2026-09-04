@@ -43,6 +43,8 @@ public class LocalizationCultureManager : ILocalizationCultureManager
         CultureInfo.DefaultThreadCurrentCulture = targetCulture;
 
         LocalizationProviderFactory.GetInstance()?.SetCulture(culture);
+
+        LocalizationNotifier.NotifyCultureChanged(culture);
     }
 
     /// <inheritdoc />

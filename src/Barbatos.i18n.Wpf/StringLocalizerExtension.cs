@@ -9,7 +9,16 @@ namespace Barbatos.i18n.Wpf;
 /// Provides a markup extension that localizes strings in XAML.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This class extends <see cref="MarkupExtension"/> and overrides the <see cref="ProvideValue"/> method to return localized strings.
+/// </para>
+/// <para>
+/// When the target is a <see cref="DependencyProperty"/>, the extension returns a <see cref="MultiBinding"/> that
+/// observes <see cref="LocalizationSource"/>, so the translation follows later culture changes without reloading
+/// the view. Anywhere a binding cannot be used - a <see cref="System.Windows.Setter"/> value, a plain CLR
+/// property - it falls back to resolving the string once, as it always did. Use <see cref="Live"/> to override
+/// that choice.
+/// </para>
 /// </remarks>
 [ContentProperty(nameof(Text))]
 [MarkupExtensionReturnType(typeof(string))]
@@ -48,6 +57,17 @@ public class StringLocalizerExtension : MarkupExtension
         get;
         set => field = EscapeText(value);
     }
+
+    /// <summary>
+    /// Gets or sets a binding that supplies the localization key at runtime.
+    /// </summary>
+    /// <remarks>
+    /// Use this inside a <see cref="DataTemplate"/> - an <c>ItemsControl</c>, <c>ListView</c> or <c>DataGrid</c>
+    /// row - where the key lives in the item itself: <c>{i18n:StringLocalizer BindText={Binding StatusKey}}</c>.
+    /// It takes precedence over <see cref="Text"/>, and unlike <see cref="Text"/> the resolved key is used as-is,
+    /// without XML entity unescaping.
+    /// </remarks>
+    public BindingBase? BindText { get; set; } = null;
 
     /// <summary>
     /// Gets or sets the namespace of the text to be localized.
@@ -115,67 +135,165 @@ public class StringLocalizerExtension : MarkupExtension
     public string? StringFormat { get; set; } = null;
 
     /// <summary>
+    /// Gets or sets whether the translation re-evaluates when the culture changes.
+    /// </summary>
+    /// <remarks>
+    /// Left unset, the extension decides for itself: it produces a live binding when the target is a
+    /// <see cref="DependencyProperty"/> and a one-off string otherwise. Set it to <see langword="true"/> to force
+    /// a binding, or to <see langword="false"/> to opt out of the culture watch entirely.
+    /// </remarks>
+    public bool? Live { get; set; } = null;
+
+    /// <summary>
     /// Returns a localized string for the <see cref="Text"/> property.
     /// </summary>
     /// <param name="serviceProvider">An object that provides services for the markup extension.</param>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     public override object? ProvideValue(IServiceProvider serviceProvider)
     {
-        if (string.IsNullOrEmpty(Text))
+        bool keyFromBinding = BindText is not null;
+
+        if (!keyFromBinding && string.IsNullOrEmpty(Text))
         {
             return string.Empty;
         }
 
-        bool useBinding = BindArg is not null || BindArg2 is not null || BindArg3 is not null || BindArg4 is not null || BindArg5 is not null;
+        bool hasArgBindings = BindArg is not null || BindArg2 is not null || BindArg3 is not null || BindArg4 is not null || BindArg5 is not null;
+        bool cultureSlot = Live != false;
 
-        if (useBinding)
+        if (keyFromBinding || hasArgBindings || (cultureSlot && IsBindableTarget(serviceProvider, Live)))
         {
-            var stringFormats = new string?[]
-            {
-                (BindArg as Binding)?.StringFormat,
-                (BindArg2 as Binding)?.StringFormat,
-                (BindArg3 as Binding)?.StringFormat,
-                (BindArg4 as Binding)?.StringFormat,
-                (BindArg5 as Binding)?.StringFormat
-            };
-
-            var multiBinding = new MultiBinding
-            {
-                Converter = new StringLocalizerConverter(Text, Namespace, ProviderKey, stringFormats),
-                StringFormat = StringFormat
-            };
-
-            if (BindArg is not null) multiBinding.Bindings.Add(BindArg);
-            else if (Arg is not null) multiBinding.Bindings.Add(new Binding { Source = Arg });
-
-            if (BindArg2 is not null) multiBinding.Bindings.Add(BindArg2);
-            else if (Arg2 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg2 });
-
-            if (BindArg3 is not null) multiBinding.Bindings.Add(BindArg3);
-            else if (Arg3 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg3 });
-
-            if (BindArg4 is not null) multiBinding.Bindings.Add(BindArg4);
-            else if (Arg4 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg4 });
-
-            if (BindArg5 is not null) multiBinding.Bindings.Add(BindArg5);
-            else if (Arg5 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg5 });
-
-            return multiBinding.ProvideValue(serviceProvider);
+            return BuildBinding(cultureSlot, keyFromBinding).ProvideValue(serviceProvider);
         }
 
-        CultureInfo currentCulture =
-            WpfLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
+        return Localize();
+    }
 
-        string? selectedNamespace = Namespace?.ToLowerInvariant() ?? null;
+    /// <summary>
+    /// Escapes special characters in a string.
+    /// </summary>
+    /// <param name="text">The text to escape.</param>
+    /// <returns>The escaped text.</returns>
+    public static string EscapeText(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
 
-        LocalizationSet? localizationSet = WpfLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
+        if (text.IndexOf('&') < 0)
+        {
+            return text.Trim();
+        }
+
+        return new System.Text.StringBuilder(text)
+            .Replace("&amp;", "&")
+            .Replace("&lt;", "<")
+            .Replace("&gt;", ">")
+            .Replace("&quot;", "\"")
+            .Replace("&apos;", "'")
+            .ToString()
+            .Trim();
+    }
+
+    /// <summary>
+    /// Determines whether the XAML target can accept a binding.
+    /// </summary>
+    /// <param name="serviceProvider">An object that provides services for the markup extension.</param>
+    /// <param name="live">The value of the extension's <see cref="Live"/> property.</param>
+    /// <returns>True when a binding may be produced; otherwise false.</returns>
+    internal static bool IsBindableTarget(IServiceProvider? serviceProvider, bool? live)
+    {
+        if (live == true)
+        {
+            return true;
+        }
+
+        return serviceProvider?.GetService(typeof(IProvideValueTarget)) is IProvideValueTarget target
+            && target.TargetProperty is DependencyProperty;
+    }
+
+    /// <summary>
+    /// Assembles the multi-binding that feeds <see cref="StringLocalizerConverter"/>.
+    /// </summary>
+    /// <param name="cultureSlot">Whether to prepend the <see cref="LocalizationSource"/> culture value.</param>
+    /// <param name="keyFromBinding">Whether the key comes from <see cref="BindText"/>.</param>
+    /// <returns>The assembled multi-binding.</returns>
+    private MultiBinding BuildBinding(bool cultureSlot, bool keyFromBinding)
+    {
+        var multiBinding = new MultiBinding { StringFormat = StringFormat };
+
+        if (cultureSlot)
+        {
+            multiBinding.Bindings.Add(
+                new Binding(nameof(LocalizationSource.Culture))
+                {
+                    Source = LocalizationSource.Instance,
+                    Mode = BindingMode.OneWay
+                });
+        }
+
+        if (keyFromBinding)
+        {
+            multiBinding.Bindings.Add(BindText!);
+        }
+
+        // WPF ignores the StringFormat of a MultiBinding child, so it is captured here and applied per argument
+        // by the converter. The list is built alongside the bindings to stay aligned with the arguments actually
+        // contributed - arguments are skipped when both their static and bound forms are unset.
+        var stringFormats = new List<string?>(5);
+
+        AddArgument(multiBinding, stringFormats, BindArg, Arg);
+        AddArgument(multiBinding, stringFormats, BindArg2, Arg2);
+        AddArgument(multiBinding, stringFormats, BindArg3, Arg3);
+        AddArgument(multiBinding, stringFormats, BindArg4, Arg4);
+        AddArgument(multiBinding, stringFormats, BindArg5, Arg5);
+
+        multiBinding.Converter = new StringLocalizerConverter(
+            Text,
+            Namespace,
+            ProviderKey,
+            stringFormats.ToArray(),
+            cultureSlot,
+            keyFromBinding);
+
+        return multiBinding;
+    }
+
+    /// <summary>
+    /// Appends one format argument to the multi-binding, preferring its bound form over its static form.
+    /// </summary>
+    /// <param name="multiBinding">The multi-binding being assembled.</param>
+    /// <param name="stringFormats">The per-argument formats collected so far.</param>
+    /// <param name="binding">The bound form of the argument.</param>
+    /// <param name="value">The static form of the argument.</param>
+    private static void AddArgument(MultiBinding multiBinding, List<string?> stringFormats, BindingBase? binding, object? value)
+    {
+        if (binding is not null)
+        {
+            multiBinding.Bindings.Add(binding);
+            stringFormats.Add((binding as Binding)?.StringFormat);
+            return;
+        }
+
+        if (value is not null)
+        {
+            multiBinding.Bindings.Add(new Binding { Source = value });
+            stringFormats.Add(null);
+        }
+    }
+
+    /// <summary>
+    /// Resolves the translation once, for targets that cannot hold a binding.
+    /// </summary>
+    /// <returns>The localized string, or the original text if no localization is found.</returns>
+    private object Localize()
+    {
+        LocalizationSet? localizationSet = LocalizationLookup.ResolveSet(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace));
 
         if (localizationSet is null)
         {
-            return Text;
+            return Text ?? string.Empty;
         }
 
         List<object?>? args = null;
@@ -210,38 +328,13 @@ public class StringLocalizerExtension : MarkupExtension
             args.Add(Arg5);
         }
 
-        string result = localizationSet.Format(CultureInfo.CurrentCulture, Text, args?.ToArray() ?? null);
+        string result = localizationSet.Format(CultureInfo.CurrentCulture, Text!, args?.ToArray() ?? null) ?? Text ?? string.Empty;
+
         if (StringFormat is not null)
         {
             return string.Format(StringFormat, result);
         }
+
         return result;
-    }
-
-    /// <summary>
-    /// Escapes special characters in a string.
-    /// </summary>
-    /// <param name="text">The text to escape.</param>
-    /// <returns>The escaped text.</returns>
-    public static string EscapeText(string? text)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return string.Empty;
-        }
-
-        if (text.IndexOf('&') < 0)
-        {
-            return text.Trim();
-        }
-
-        return new System.Text.StringBuilder(text)
-            .Replace("&amp;", "&")
-            .Replace("&lt;", "<")
-            .Replace("&gt;", ">")
-            .Replace("&quot;", "\"")
-            .Replace("&apos;", "'")
-            .ToString()
-            .Trim();
     }
 }

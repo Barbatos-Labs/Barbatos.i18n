@@ -18,7 +18,7 @@
   "FirstName": "First Name:",
   "LastName": "Last Name:",
   "HeaderPlural": "4. Dynamic Plural Localization:",
-  "HeaderAttributes": "5. Translate Picker Items:",
+  "HeaderAttributes": "5. Translate List Items (string keys and enums):",
   "HeaderStringFormat": "6. String Format (Optional):",
   "HeaderNamespace": "7. Namespaces (LocalizationSet Name):",
   "HeaderProviderKey": "8. Multiple Providers (ProviderKey):",
@@ -42,5 +42,11 @@
   "No": "No",
   "PromptTitle": "Input Name",
   "PromptContent": "Please enter your name:",
-  "PromptPlaceholder": "Type name here..."
+  "PromptPlaceholder": "Type name here...",
+  "HeaderBindText": "11. Dynamic Keys in Lists (BindText):",
+  "Active": "Active",
+  "Pending": "Pending review",
+  "Archived": "Archived",
+  "OneItemInStock": "1 item left",
+  "ManyItemsInStock": "{0} items left"
 }
