@@ -8,17 +8,25 @@ namespace Barbatos.i18n.Wpf;
 /// <summary>
 /// Provides a multi value converter that localizes strings in XAML.
 /// </summary>
+/// <remarks>
+/// The converter reads the values of a <see cref="MultiBinding"/> in a fixed order: an optional culture slot
+/// produced by <see cref="LocalizationSource"/>, an optional slot carrying the localization key, and finally the
+/// format arguments. <see cref="StringLocalizerExtension"/> assembles the bindings to match.
+/// </remarks>
 public sealed class StringLocalizerConverter : IMultiValueConverter
 {
     private readonly string?[]? _stringFormats;
+    private readonly string? _normalizedNamespace;
+    private readonly bool _hasCultureSlot;
+    private readonly bool _keyFromBinding;
 
     /// <summary>
-    /// Gets or sets the text to be localized.
+    /// Gets the text to be localized, or null when the key is supplied by a binding.
     /// </summary>
-    public string Text { get; }
+    public string? Text { get; }
 
     /// <summary>
-    /// Gets or sets the namespace of the text to be localized.
+    /// Gets the namespace of the text to be localized.
     /// </summary>
     public string? Namespace { get; }
 
@@ -27,41 +35,80 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
     /// </summary>
     public string ProviderKey { get; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StringLocalizerConverter"/> class whose bound values are
+    /// format arguments only.
+    /// </summary>
+    /// <param name="text">The localization key.</param>
+    /// <param name="textNamespace">The namespace of the text to be localized.</param>
+    /// <param name="providerKey">The provider key.</param>
+    /// <param name="stringFormats">Per-argument formats, aligned with the format arguments.</param>
     public StringLocalizerConverter(string text, string? textNamespace, string providerKey, string?[]? stringFormats = null)
+        : this(text, textNamespace, providerKey, stringFormats, hasCultureSlot: false, keyFromBinding: false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StringLocalizerConverter"/> class, describing which leading
+    /// values of the multi-binding are reserved.
+    /// </summary>
+    /// <param name="text">The localization key, or null when <paramref name="keyFromBinding"/> is true.</param>
+    /// <param name="textNamespace">The namespace of the text to be localized.</param>
+    /// <param name="providerKey">The provider key.</param>
+    /// <param name="stringFormats">Per-argument formats, aligned with the format arguments.</param>
+    /// <param name="hasCultureSlot">Whether the first value is the <see cref="LocalizationSource"/> culture and must be skipped.</param>
+    /// <param name="keyFromBinding">Whether the localization key is carried by a bound value instead of <paramref name="text"/>.</param>
+    public StringLocalizerConverter(
+        string? text,
+        string? textNamespace,
+        string providerKey,
+        string?[]? stringFormats,
+        bool hasCultureSlot,
+        bool keyFromBinding
+    )
     {
         Text = text;
         Namespace = textNamespace;
         ProviderKey = providerKey;
         _stringFormats = stringFormats;
+        _normalizedNamespace = LocalizationLookup.NormalizeNamespace(textNamespace);
+        _hasCultureSlot = hasCultureSlot;
+        _keyFromBinding = keyFromBinding;
     }
 
+    /// <summary>
+    /// Localizes the key and fills its placeholders with the bound format arguments.
+    /// </summary>
+    /// <param name="values">The values produced by the source bindings.</param>
+    /// <param name="targetType">The type of the binding target property.</param>
+    /// <param name="parameter">The converter parameter to use.</param>
+    /// <param name="culture">The culture to use in the converter.</param>
+    /// <returns>The localized string, or the key itself when no translation is found.</returns>
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        if (Text is null)
+        values ??= [];
+
+        int index = _hasCultureSlot ? 1 : 0;
+        string? key = Text;
+
+        if (_keyFromBinding)
+        {
+            key = index < values.Length ? ReadKey(values[index]) : null;
+            index++;
+        }
+
+        if (string.IsNullOrEmpty(key))
         {
             return string.Empty;
         }
 
-        CultureInfo currentCulture =
-            WpfLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-
-        string? selectedNamespace = Namespace?.ToLowerInvariant();
-
-        LocalizationSet? localizationSet = WpfLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
-
-        if (localizationSet is null)
-        {
-            return StringLocalizerExtension.EscapeText(Text);
-        }
-
         // Apply StringFormat to individual values if provided
-        var formatValues = new object?[values.Length];
-        for (int i = 0; i < values.Length; i++)
+        int argumentCount = Math.Max(0, values.Length - index);
+        object?[] formatValues = argumentCount == 0 ? [] : new object?[argumentCount];
+
+        for (int i = 0; i < argumentCount; i++)
         {
-            var val = values[i];
+            object? val = values[index + i];
             if (val == DependencyProperty.UnsetValue)
             {
                 formatValues[i] = string.Empty;
@@ -79,7 +126,8 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             }
         }
 
-        return localizationSet.Format(CultureInfo.CurrentCulture, Text, formatValues) ?? StringLocalizerExtension.EscapeText(Text);
+        return LocalizationLookup.ResolveFormatted(ProviderKey, _normalizedNamespace, key, CultureInfo.CurrentCulture, formatValues)
+            ?? StringLocalizerExtension.EscapeText(key);
     }
 
     /// <summary>
@@ -88,5 +136,30 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
         throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Reads a localization key out of a bound value.
+    /// </summary>
+    /// <param name="value">The bound value.</param>
+    /// <returns>The key, or null when the value carries none.</returns>
+    private static string? ReadKey(object? value)
+    {
+        if (value is null || value == DependencyProperty.UnsetValue)
+        {
+            return null;
+        }
+
+        if (value is string text)
+        {
+            return text;
+        }
+
+        if (value is LocalizationKey localizationKey)
+        {
+            return localizationKey.ToString();
+        }
+
+        return value.ToString();
     }
 }

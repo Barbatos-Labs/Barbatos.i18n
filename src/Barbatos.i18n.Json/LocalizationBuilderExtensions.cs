@@ -4,8 +4,6 @@
 // All Rights Reserved.
 
 using Barbatos.i18n.IO;
-using Barbatos.i18n.Json.Converters;
-using Barbatos.i18n.Json.Models;
 using Barbatos.i18n.Json.Parsers;
 
 namespace Barbatos.i18n.Json;
@@ -15,13 +13,14 @@ namespace Barbatos.i18n.Json;
 /// </summary>
 public static class LocalizationBuilderExtensions
 {
-    internal static readonly JsonSerializerOptions DefaultJsonSerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        AllowTrailingCommas = true,
-        Converters = { new TranslationsContainerConverter() },
-    };
-
+    /// <summary>
+    /// Adds localized strings from JSON contents, in the default namespace.
+    /// </summary>
+    /// <param name="builder">The builder to add the localized strings to.</param>
+    /// <param name="jsonString">The JSON contents.</param>
+    /// <param name="culture">The culture the contents provide.</param>
+    /// <returns>The builder, so calls can be chained.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the contents are not a valid localization file.</exception>
     public static LocalizationBuilder FromJsonString(
         this LocalizationBuilder builder,
         string jsonString,
@@ -31,6 +30,15 @@ public static class LocalizationBuilderExtensions
         return builder.FromJsonString(jsonString, default, culture);
     }
 
+    /// <summary>
+    /// Adds localized strings from JSON contents, under the given namespace.
+    /// </summary>
+    /// <param name="builder">The builder to add the localized strings to.</param>
+    /// <param name="jsonString">The JSON contents.</param>
+    /// <param name="baseName">The namespace to register the set under, or null for the default namespace.</param>
+    /// <param name="culture">The culture the contents provide.</param>
+    /// <returns>The builder, so calls can be chained.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the contents are not a valid localization file.</exception>
     public static LocalizationBuilder FromJsonString(
         this LocalizationBuilder builder,
         string jsonString,
@@ -76,7 +84,7 @@ public static class LocalizationBuilderExtensions
         CultureInfo culture
     )
     {
-        if (!path.EndsWith(".json"))
+        if (!path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
                 $"Parameter {nameof(path)} in {nameof(FromJson)} must be path to the JSON file."
@@ -89,28 +97,9 @@ public static class LocalizationBuilderExtensions
             throw new LocalizationBuilderException($"Could not find the JSON localization resource: {path}");
         }
 
-        string fileName = path;
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
-            fileName = fileName.Substring(0, lastDotIndex);
-            int lastDotBeforeExtension = fileName.LastIndexOf('.');
-            if (lastDotBeforeExtension >= 0)
-            {
-                fileName = fileName.Substring(lastDotBeforeExtension + 1);
-            }
-        }
-        
-        string name = fileName;
-        int cultureIndex = name.IndexOf("-" + culture.Name, StringComparison.OrdinalIgnoreCase);
-        if (cultureIndex > 0)
-        {
-            name = name.Substring(0, cultureIndex);
-        }
-
         builder.AddLocalization(
             new LocalizationSet(
-                name.ToLowerInvariant(),
+                LocalizationSetNaming.DeriveName(path, culture),
                 culture,
                 ComputeLocalizationPairs(contents)
             )
@@ -128,14 +117,63 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentNullException(nameof(contents));
         }
 
-        Version schemaVersion = new(
-            JsonSerializer
-                .Deserialize<ITranslationsContainer>(contents, DefaultJsonSerializerOptions)
-                ?.Version
-                ?? "1.0.0"
-        );
-
-        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(schemaVersion.Major);
+        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(ReadVersion(contents)));
         return parser.Parse(contents);
+    }
+
+    /// <summary>
+    /// Reads the file's declared schema version.
+    /// </summary>
+    /// <param name="contents">The JSON contents.</param>
+    /// <returns>The version as written in the file, or "1.0.0" when the file declares none.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the root of the file is not an object.</exception>
+    private static string ReadVersion(string contents)
+    {
+        using JsonDocument document = JsonReading.ParseDocument(contents);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new LocalizationBuilderException(
+                $"The JSON localization file must have an object at its root, but it starts with {document.RootElement.ValueKind}."
+            );
+        }
+
+        if (!JsonReading.TryFindProperty(document.RootElement, "version", out JsonElement version))
+        {
+            return "1.0.0";
+        }
+
+        // A numeric version is accepted as readily as a quoted one; ReadMajorVersion validates the spelling.
+        return version.ValueKind == JsonValueKind.String
+            ? version.GetString() ?? "1.0.0"
+            : version.ToString();
+    }
+
+    /// <summary>
+    /// Reads the major schema version from the value of the file's <c>version</c> property.
+    /// </summary>
+    /// <param name="version">The version as it was written in the file.</param>
+    /// <returns>The major version number.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the value is not a version number.</exception>
+    /// <remarks>
+    /// Both "2.0" and a bare "2" are accepted; only the major component decides which parser runs. Feeding the
+    /// raw value to <see cref="Version"/> used to throw a bare ArgumentException that named neither the file
+    /// nor the offending value.
+    /// </remarks>
+    private static int ReadMajorVersion(string version)
+    {
+        if (Version.TryParse(version, out Version? parsed))
+        {
+            return parsed.Major;
+        }
+
+        if (int.TryParse(version, NumberStyles.Integer, CultureInfo.InvariantCulture, out int major))
+        {
+            return major;
+        }
+
+        throw new LocalizationBuilderException(
+            $"The JSON file declares an unreadable schema version \"{version}\". Expected a value such as \"1.0\" or \"2.0\"."
+        );
     }
 }

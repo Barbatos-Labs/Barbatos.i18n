@@ -245,7 +245,10 @@ orleans.codegen.cs
 
 # Including strong name files can present a security risk
 # (https://github.com/github/gitignore/pull/2483#issue-259490424)
-#*.snk
+# The release workflow decodes src/barbatos.snk from the STRONG_NAME_KEY secret, so the key is never meant to be
+# in the repository. Anyone reproducing a signed build locally writes it to that path, and without this line a
+# routine "git add -A" would commit the private key to a public repository, permanently and irrevocably.
+*.snk
 
 # Since there are multiple workflows, uncomment next line to ignore bower_components
 # (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)

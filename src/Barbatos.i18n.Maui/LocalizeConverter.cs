@@ -31,22 +31,8 @@ public class LocalizeConverter : IValueConverter
             return value;
         }
 
-        CultureInfo currentCulture =
-            MauiLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-
-        string? selectedNamespace = Namespace?.ToLowerInvariant();
-
-        LocalizationSet? localizationSet = MauiLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
-
-        if (localizationSet is null)
-        {
-            return stringValue;
-        }
-
-        return localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)stringValue);
+        // Fall back to the key itself so an untranslated entry is visible rather than blank.
+        return LocalizationLookup.ResolveValue(ProviderKey, LocalizationLookup.NormalizeNamespace(Namespace), stringValue) ?? stringValue;
     }
 
     /// <summary>

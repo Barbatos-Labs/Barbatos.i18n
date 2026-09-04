@@ -4,9 +4,7 @@
              xmlns:i18n="http://schemas.barbatos.co/i18n/2026/xaml"
              x:Class="Barbatos.i18n.Sample.Maui.MainPage">
 
-    <ContentPage.Resources>
-        <i18n:LocalizeConverter x:Key="LocalizeConverter" />
-    </ContentPage.Resources>
+    <!-- No converter resources to declare: {i18n:StringLocalizer} covers static keys, bound keys and arguments. -->
 
     <ScrollView>
         <VerticalStackLayout Spacing="0" Padding="20,20,20,40">
@@ -126,15 +124,23 @@
                    FontAttributes="Bold"
                    FontSize="14"
                    Margin="0,0,0,8" />
-            <Picker ItemsSource="{Binding AvailableOptions}"
-                    SelectedIndex="0"
-                    Margin="10,0,0,20"
-                    HorizontalOptions="Start"
-                    WidthRequest="250">
-                <Picker.ItemDisplayBinding>
-                    <Binding Converter="{StaticResource LocalizeConverter}" />
-                </Picker.ItemDisplayBinding>
-            </Picker>
+            <!-- Items are raw keys: BindText translates each one, with no converter resource to declare. -->
+            <CollectionView ItemsSource="{Binding AvailableOptions}" Margin="10,0,0,12">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{i18n:StringLocalizer BindText={Binding}}" Padding="0,4" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Items are enum members: OrderStatus.Active resolves the "Active" key directly. -->
+            <CollectionView ItemsSource="{Binding StatusOptions}" Margin="10,0,0,20">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{i18n:StringLocalizer BindText={Binding}}" Padding="0,4" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
             <!-- 6. String Format -->
             <Label Text="{i18n:StringLocalizer Text='HeaderStringFormat'}"
@@ -203,6 +209,30 @@
                         Command="{Binding ShowPromptCommand}"
                         HorizontalOptions="Start" />
             </VerticalStackLayout>
+
+            <!-- 11. Dynamic keys inside a list (BindText) -->
+            <Label Text="{i18n:StringLocalizer Text='HeaderBindText'}"
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+            <CollectionView ItemsSource="{Binding Products}" Margin="10,0,0,20">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="*,*,*" Padding="0,6">
+                            <Label Grid.Column="0" Text="{Binding Name}" VerticalOptions="Center" />
+
+                            <!-- Status is an OrderStatus enum: its member name is the key, resolved per row. -->
+                            <Label Grid.Column="1"
+                                   Text="{i18n:StringLocalizer BindText={Binding Status}}"
+                                   VerticalOptions="Center" />
+
+                            <Label Grid.Column="2"
+                                   Text="{i18n:PluralStringLocalizer Text='OneItemInStock', PluralText='ManyItemsInStock', BindCount={Binding Stock}}"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
         </VerticalStackLayout>
     </ScrollView>

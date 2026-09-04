@@ -1,0 +1,9 @@
+﻿# Settings that apply to the shipping packages only. Samples and tests inherit the repository root file.
+
+[*.cs]
+
+# The root file disables CS1591 repo-wide, which is right for samples and tests but hid genuinely undocumented
+# public API here: FromCsv, FromCsvString, FromJsonString, the LocalizationKey operators and the LocalizationSet
+# indexers all shipped to NuGet with no IntelliSense. These packages are consumed through IntelliSense, and
+# every public member is a permanent API commitment, so a missing comment is worth a warning.
+dotnet_diagnostic.CS1591.severity = warning

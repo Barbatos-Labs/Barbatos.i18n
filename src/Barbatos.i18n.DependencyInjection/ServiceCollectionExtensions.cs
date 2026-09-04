@@ -41,7 +41,19 @@ public static class ServiceCollectionExtensions
 
         if (optionsDescriptor != null)
         {
-            options = (LocalizationOptions)optionsDescriptor.ImplementationInstance!;
+            // ImplementationInstance is null for a type- or factory-based registration, and casting null to a
+            // reference type succeeds silently, so the failure used to surface as a NullReferenceException
+            // inside the caller's own configure delegate.
+            if (optionsDescriptor.ImplementationInstance is not LocalizationOptions registeredOptions)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(LocalizationOptions)} is already registered in a form this method cannot read. "
+                        + $"Register it as an instance - services.AddSingleton(new {nameof(LocalizationOptions)}(...)) - "
+                        + $"or call {nameof(ConfigureLocalizationOptions)} before registering it yourself."
+                );
+            }
+
+            options = registeredOptions;
             services.Remove(optionsDescriptor);
         }
         else
@@ -103,7 +115,19 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            resolver = (LocalizationProviderResolver)resolverDescriptor.ImplementationInstance!;
+            // Providers are handed to the resolver through LocalizationProviderResolver.AddProvider, which the
+            // ILocalizationProviderResolver interface does not expose, so a foreign implementation cannot be
+            // extended here. Say so instead of failing with NullReferenceException or InvalidCastException.
+            if (resolverDescriptor.ImplementationInstance is not LocalizationProviderResolver registeredResolver)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ILocalizationProviderResolver)} is already registered in a form this method cannot extend. "
+                        + $"Register it as a {nameof(LocalizationProviderResolver)} instance, or add every provider "
+                        + $"through {nameof(AddStringLocalizer)} so the resolver is created here."
+                );
+            }
+
+            resolver = registeredResolver;
         }
 
         resolver.AddProvider(providerKey, provider);

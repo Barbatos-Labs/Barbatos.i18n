@@ -5,10 +5,20 @@
 
 namespace Barbatos.i18n.Yaml;
 
+/// <summary>
+/// Deserializes the small subset of YAML that localization files use into namespaced dictionaries.
+/// </summary>
 public static class YamlDictionariesDeserializer
 {
     private const string DefaultNamespace = "default";
 
+    /// <summary>
+    /// Reads YAML contents into one dictionary per namespace.
+    /// </summary>
+    /// <param name="input">The YAML contents.</param>
+    /// <returns>
+    /// The namespaces found in the file, keyed by name; root-level keys are collected under "default".
+    /// </returns>
     public static IDictionary<string, IDictionary<string, string>> FromString(string input)
     {
         Dictionary<string, IDictionary<string, string>> result = new();
@@ -29,11 +39,15 @@ public static class YamlDictionariesDeserializer
                 continue;
             }
 
-            // Check for namespace
-            if (trimmedLine.EndsWith(":"))
+            // Check for namespace. A namespace declaration carries nothing after its colon, so the test has to
+            // be "nothing follows the FIRST colon" rather than "the line ends with a colon" - otherwise a
+            // key whose value itself ends in a colon ("EnterName: Enter Name:") is swallowed as a namespace.
+            int firstColon = trimmedLine.IndexOf(':');
+
+            if (firstColon >= 0 && trimmedLine.AsSpan(firstColon + 1).Trim().IsEmpty)
             {
-                currentNamespace = trimmedLine.TrimEnd(':');
-                currentIndentation = line.IndexOf(trimmedLine);
+                currentNamespace = trimmedLine.Substring(0, firstColon).Trim();
+                currentIndentation = line.IndexOf(trimmedLine, StringComparison.Ordinal);
                 continue;
             }
 
@@ -45,7 +59,7 @@ public static class YamlDictionariesDeserializer
             }
 
             // Check for end of namespace
-            if (line.IndexOf(trimmedLine) < currentIndentation)
+            if (line.IndexOf(trimmedLine, StringComparison.Ordinal) < currentIndentation)
             {
                 currentNamespace = DefaultNamespace;
                 currentIndentation = 0;
@@ -71,6 +85,13 @@ public static class YamlDictionariesDeserializer
 
     private static string RemoveStartEndQuotes(string value)
     {
+        // A single quote character satisfies both StartsWith and EndsWith, so the length guard is what keeps
+        // Substring from being handed a negative length.
+        if (value.Length < 2)
+        {
+            return value;
+        }
+
         if (
             (value.StartsWith("'") && value.EndsWith("'"))
             || (value.StartsWith("\"") && value.EndsWith("\""))

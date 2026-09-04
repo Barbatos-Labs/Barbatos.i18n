@@ -3,11 +3,7 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
-using System.Globalization;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Threading;
-using Barbatos.i18n.Wpf;
 
 namespace Barbatos.i18n.Sample.Wpf;
 
@@ -21,15 +17,7 @@ public partial class HomePage : Page
         DataContext = _viewModel;
     }
 
-    private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (IsLoaded && e.AddedItems.Count > 0 && e.AddedItems[0] is CultureInfo selectedCulture)
-        {
-            Dispatcher.BeginInvoke(() =>
-            {
-                (Application.Current as App)?.ServiceProvider.SetLocalizationCulture(selectedCulture);
-                NavigationService?.Navigate(new HomePage());
-            }, DispatcherPriority.Normal);
-        }
-    }
+    // No code-behind is needed to switch language: HomeViewModel.OnSelectedCultureChanged calls
+    // SetLocalizationCulture, LocalizationNotifier tells LocalizationSource, and every {i18n:...}
+    // binding re-translates in place. This used to require Navigate(new HomePage()) to redraw the page.
 }

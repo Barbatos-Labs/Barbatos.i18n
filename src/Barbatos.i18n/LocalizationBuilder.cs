@@ -12,7 +12,9 @@ namespace Barbatos.i18n;
 /// </summary>
 public class LocalizationBuilder
 {
-    private readonly HashSet<LocalizationSet> _localizations = [];
+    // A list, not a set: duplicates are already rejected by AddLocalization, and lookups resolve a key by
+    // searching sets in registration order, so that order has to be the one the caller wrote.
+    private readonly List<LocalizationSet> _localizations = [];
 
     private CultureInfo? _selectedCulture;
 
@@ -38,25 +40,60 @@ public class LocalizationBuilder
     }
 
     /// <summary>
-    /// Adds a localization set to the collection.
+    /// Adds a localization set to the collection, merging it into an existing set of the same name and culture.
     /// </summary>
     /// <param name="localization">The localization set to add.</param>
-    /// <exception cref="InvalidOperationException">Thrown when a localization set for the same culture already exists in the collection.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="localization"/> is null.</exception>
+    /// <remarks>
+    /// Two files can legitimately belong to one namespace - a YAML file's root-level keys and an INI file named
+    /// after nothing but its culture are both in the default one - and refusing that combination aborted
+    /// application startup over a detail the consumer had no reason to anticipate. They are merged instead, and
+    /// a key present in both keeps the value from the file registered first, which is the precedence a lookup
+    /// already applies when it searches sets in registration order.
+    /// </remarks>
     public virtual void AddLocalization(LocalizationSet localization)
     {
-        if (
-            _localizations.Any(x =>
-                x.Name == localization.Name && x.Culture.Equals(localization.Culture)
-            )
-        )
+        if (localization is null)
         {
-            // NOTE: Consider adding merging of multiple collections for one culture
-            throw new InvalidOperationException(
-                $"Localization \"{localization.Name}\" for culture {localization.Culture} already exists."
-            );
+            throw new ArgumentNullException(nameof(localization));
         }
 
-        _ = _localizations.Add(localization);
+        int existingIndex = _localizations.FindIndex(x =>
+            x.Name == localization.Name && x.Culture.Equals(localization.Culture)
+        );
+
+        if (existingIndex < 0)
+        {
+            _localizations.Add(localization);
+            return;
+        }
+
+        // Replaced in place so that the merged set keeps the position of the file registered first.
+        _localizations[existingIndex] = Merge(_localizations[existingIndex], localization);
+    }
+
+    /// <summary>
+    /// Merges two sets that share a name and a culture.
+    /// </summary>
+    /// <param name="first">The set registered first, whose values win.</param>
+    /// <param name="second">The set registered afterwards.</param>
+    /// <returns>A set carrying the keys of both, dictionary-backed so lookups stay O(1).</returns>
+    private static LocalizationSet Merge(LocalizationSet first, LocalizationSet second)
+    {
+        Dictionary<LocalizationKey, string?> merged = new();
+
+        // Seeded with the later file, then overwritten by the earlier one, so the earlier value wins.
+        foreach (KeyValuePair<LocalizationKey, string?> pair in second.Strings)
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
+        foreach (KeyValuePair<LocalizationKey, string?> pair in first.Strings)
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
+        return first with { Strings = merged };
     }
 
     /// <summary>
@@ -112,11 +149,9 @@ public class LocalizationBuilder
     /// <summary>
     /// Adds localized strings from a resource with the specified base name in the specified assembly to the <see cref="LocalizationBuilder"/>.
     /// </summary>
-    /// <param name="builder">The <see cref="LocalizationBuilder"/> to add the localized strings to.</param>
     /// <param name="assembly">The assembly that contains the resource.</param>
     /// <param name="baseName">The base name of the resource.</param>
     /// <param name="culture">The culture for which the localized strings are provided.</param>
-    /// <returns>The <see cref="LocalizationBuilder"/> with the added localized strings.</returns>
     /// <exception cref="LocalizationBuilderException">Thrown when the resource cannot be found.</exception>
     public virtual void FromResource(Assembly assembly, string baseName, CultureInfo culture)
     {

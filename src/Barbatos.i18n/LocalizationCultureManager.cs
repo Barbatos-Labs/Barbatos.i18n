@@ -42,7 +42,14 @@ public class LocalizationCultureManager : ILocalizationCultureManager
         CultureInfo.CurrentCulture = targetCulture;
         CultureInfo.DefaultThreadCurrentCulture = targetCulture;
 
-        LocalizationProviderFactory.GetInstance()?.SetCulture(culture);
+        // Every provider, not just the default one: a provider registered under a ProviderKey would otherwise
+        // keep serving the culture it was built with while the live bindings around it switch language.
+        foreach (ILocalizationProvider provider in LocalizationProviderFactory.GetAllInstances())
+        {
+            provider.SetCulture(culture);
+        }
+
+        LocalizationNotifier.NotifyCultureChanged(culture, targetCulture);
     }
 
     /// <inheritdoc />
@@ -60,11 +67,11 @@ public class LocalizationCultureManager : ILocalizationCultureManager
     /// <inheritdoc />
     public IReadOnlyCollection<CultureInfo> GetSupportedCultures()
     {
-        CultureInfo[] cultures = LocalizationProviderFactory.GetInstance()?
-            .GetLocalizationSets()
+        CultureInfo[] cultures = LocalizationProviderFactory.GetAllInstances()
+            .SelectMany(p => p.GetLocalizationSets())
             .Select(s => s.Culture)
             .Distinct()
-            .ToArray() ?? [];
+            .ToArray();
 
         return cultures.Length > 0 ? cultures : ((ILocalizationCultureManager)this).GetOperatingSystemCultures();
     }

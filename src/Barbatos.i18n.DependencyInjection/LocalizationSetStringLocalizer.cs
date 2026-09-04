@@ -35,18 +35,13 @@ public class LocalizationSetStringLocalizer(LocalizationSet _localizationSet) : 
     /// <returns>The string with filled placeholders.</returns>
     private LocalizedString LocalizeString(string name, object[] placeholders)
     {
-        if(placeholders is null || !placeholders.Any())
-        {
-            return new LocalizedString(
-                name,
-                _localizationSet[name] ?? name
-            );
-        }
+        string? value = (placeholders is null || placeholders.Length == 0)
+            ? _localizationSet[name]
+            : _localizationSet[name, placeholders];
 
-        return new LocalizedString(
-            name,
-            _localizationSet[name, placeholders] ?? name
-        );
+        // The third argument is what lets callers tell a real translation from a key echoed back, which is how
+        // tooling audits for missing strings.
+        return new LocalizedString(name, value ?? name, value is null);
     }
 }
 
@@ -71,15 +66,23 @@ public class ProviderBasedStringLocalizer<TResource>(
         LocalizeString(name, arguments);
 
     /// <inheritdoc />
-    public IEnumerable<LocalizedString> GetAllStrings(bool _)
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
-        return localizations
-                .GetLocalizationSet(
-                    cultureManager.GetCulture(),
-                    typeof(TResource).FullName?.ToLower()
-                )
-                ?.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key))
-            ?? [];
+        CultureInfo culture = cultureManager.GetCulture();
+
+        LocalizationSet? localizationSet = localizations.GetLocalizationSet(
+            culture,
+            typeof(TResource).FullName?.ToLowerInvariant()
+        );
+
+        // The lookup walks parent cultures on its own, so a result may come from a less specific culture than
+        // the one asked for. Drop it when the caller said not to include parents.
+        if (localizationSet is not null && !includeParentCultures && !localizationSet.Culture.Equals(culture))
+        {
+            return [];
+        }
+
+        return localizationSet?.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key)) ?? [];
     }
 
     /// <summary>
@@ -92,7 +95,7 @@ public class ProviderBasedStringLocalizer<TResource>(
     {
         LocalizationSet? localizationSet = localizations.GetLocalizationSet(
             cultureManager.GetCulture(),
-            typeof(TResource).FullName?.ToLower()
+            typeof(TResource).FullName?.ToLowerInvariant()
         );
 
         if (localizationSet is null)

@@ -1,0 +1,65 @@
+{
+  "skill_name": "barbatos-i18n",
+  "evals": [
+    {
+      "id": 0,
+      "name": "aspnet-per-request-culture",
+      "prompt": "I'm adding localization to an ASP.NET Core minimal API on net10.0. It already references Barbatos.i18n, Barbatos.i18n.DependencyInjection and Barbatos.i18n.Json. Responses need to come back in the caller's language (en-US and vi-VN), picked from ?culture= or the Accept-Language header. Write me the Program.cs wiring plus one example endpoint that returns a translated greeting. This is a real API that will get concurrent traffic.",
+      "expected_output": "Program.cs enabling UseAmbientCulture, configuring RequestLocalizationOptions, calling UseRequestLocalization, and injecting a localizer into an endpoint. Critically it must NOT add middleware that calls ILocalizationCultureManager.SetCulture per request, which races across concurrent requests.",
+      "files": [],
+      "assertions": [
+        "Does NOT add middleware calling ILocalizationCultureManager.SetCulture per request",
+        "Enables UseAmbientCulture via ConfigureLocalizationOptions",
+        "Calls app.UseRequestLocalization()",
+        "Supports both en-US and vi-VN",
+        "Injects a localizer rather than resolving culture by hand",
+        "Does not hand-roll a caching or snapshot layer to work around per-request culture"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "wpf-datagrid-enum-keys",
+      "prompt": "WPF app on .NET 10 that already uses Barbatos.i18n.Wpf. I have a DataGrid bound to an ObservableCollection<ProductRow>; ProductRow has an OrderStatus enum (Active, Pending, Archived) and an int Stock. I want the status column to show translated text, and a stock column reading '1 item left' or 'N items left'. Everything has to update when the user switches language from a combo box, without restarting the app. Show me the XAML and the locale keys I need.",
+      "expected_output": "XAML using StringLocalizer BindText for the enum-driven status column and PluralStringLocalizer with BindCount for stock, inside DataTemplates. Should note that enum member names work directly as keys and that no IValueConverter is needed.",
+      "files": [],
+      "assertions": [
+        "Uses BindText bound to Status for the enum column",
+        "Uses PluralStringLocalizer with BindCount for stock",
+        "Introduces no custom IValueConverter or lookup table",
+        "Handles count = 0, which takes the singular form",
+        "Sets Live=True on any Setter.Value markup extension",
+        "States the API names without asking the user to verify them"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "add-a-language",
+      "prompt": "Our WPF desktop app ships English only using Barbatos.i18n. The locale files live in a Locales folder as en-US.json. I need to add Vietnamese. Walk me through exactly what to add - the files, the csproj changes, the registration code - and how the language picker should be populated.",
+      "expected_output": "Adds a vi-VN JSON file, an EmbeddedResource entry, a FromJson registration with the new CultureInfo using dot-notation paths, and populates the picker from GetSupportedCultures() rather than a hardcoded list. Switching goes through ILocalizationCultureManager.SetCulture.",
+      "files": [],
+      "assertions": [
+        "Adds an EmbeddedResource entry for the new file",
+        "Registration path uses dot-notation rather than a filesystem path",
+        "Registers the file with new CultureInfo(\"vi-VN\")",
+        "Populates the language picker from registered cultures rather than hardcoding, or justifies hardcoding",
+        "Language switching goes through ILocalizationCultureManager.SetCulture",
+        "Warns that a file which is not an EmbeddedResource will not be found"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "troubleshoot-raw-keys",
+      "prompt": "I just wired up Barbatos.i18n in my WPF app with dependency injection. Every single TextBlock is showing the key name - 'Greeting' instead of 'Hello'. The JSON locale files are definitely in the project and the build succeeds. What's wrong and how do I fix it?",
+      "expected_output": "Diagnoses the whole-screen failure. Should lead with the missing ServiceProvider.UseWpfLocalization() bridge, since the XAML extensions cannot see a DI-registered provider without it, and also cover the EmbeddedResource requirement and dot-notation resource paths.",
+      "files": [],
+      "assertions": [
+        "Identifies the missing UseWpfLocalization bridge",
+        "Ranks it first, or explains it is most likely because EVERY string fails",
+        "Covers the EmbeddedResource requirement",
+        "Covers dot-notation resource paths",
+        "Gives a concrete way to verify the fix",
+        "Every API named in its diagnostic snippet actually exists"
+      ]
+    }
+  ]
+}

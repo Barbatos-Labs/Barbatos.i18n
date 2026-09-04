@@ -22,7 +22,7 @@
   * [Application Setup](#application-setup)
   * [Template Syntax (XAML) & Bindings](#template-syntax-xaml--bindings)
   * [Localization in Code-Behind (C#)](#localization-in-code-behind-c)
-  * [List Rendering (DataTemplates & Converters)](#list-rendering-datatemplates--converters)
+  * [List Rendering (DataTemplates & Dynamic Keys)](#list-rendering-datatemplates--dynamic-keys)
   * [Reactivity (Runtime Culture Change)](#reactivity-runtime-culture-change)
 * **[Advanced Features](#advanced-features)**
   * [Pluralization](#pluralization)
@@ -466,24 +466,82 @@ string value = localizer[Strings.Test];
 > [!NOTE]
 > The `name` parameter in `FromResource<TResource>(culture, name)` sets the set's identifier. It is normalized to lowercase internally, so `Namespace='Strings'` and `Namespace='strings'` both resolve correctly.
 
-#### DataTemplates & ItemsControl (`LocalizeConverter`)
+#### DataTemplates & ItemsControl (`BindText`)
 
-In scenarios like `DataTemplate` where `MarkupExtension`s cannot accept direct bindings of the template's context (e.g. `Text="{Binding}"`), you must use the `LocalizeConverter`:
+`Text` is a plain CLR property, so `Text="{Binding Key}"` cannot work — a `MarkupExtension` property is not a `DependencyProperty` and the XAML parser has nowhere to attach a binding. When the key lives in the data instead of the markup — `ItemsControl`, `ListView`, `DataGrid`, `ComboBox` — bind **`BindText`** instead:
 
 ```xml
-<Window.Resources>
-    <i18n:LocalizeConverter x:Key="LocalizeConverter" />
-</Window.Resources>
-
 <ItemsControl ItemsSource="{Binding Features}">
     <ItemsControl.ItemTemplate>
         <DataTemplate>
-            <!-- Translates the bound string automatically -->
-            <TextBlock Text="{Binding Converter={StaticResource LocalizeConverter}}" />
+            <!-- The item itself is the key -->
+            <TextBlock Text="{i18n:StringLocalizer BindText={Binding}}" />
         </DataTemplate>
     </ItemsControl.ItemTemplate>
 </ItemsControl>
 ```
+
+Unlike a converter, `BindText` composes with everything else the extension offers — format arguments, namespaces, provider keys, and pluralization:
+
+```xml
+<DataGrid ItemsSource="{Binding Products}" AutoGenerateColumns="False">
+    <DataGrid.Columns>
+        <DataGridTextColumn Header="{i18n:StringLocalizer Text='ColumnProduct'}" Binding="{Binding Name}" />
+
+        <DataGridTemplateColumn Header="{i18n:StringLocalizer Text='ColumnStatus'}">
+            <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                    <!-- StatusKey is a raw key on the row: "StatusActive", "StatusPending", ... -->
+                    <TextBlock Text="{i18n:StringLocalizer BindText={Binding StatusKey}}" />
+                </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="{i18n:StringLocalizer Text='ColumnStock'}">
+            <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{i18n:PluralStringLocalizer Text='OneItemInStock',
+                                                                PluralText='ManyItemsInStock',
+                                                                BindCount={Binding Stock}}" />
+                </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+    </DataGrid.Columns>
+</DataGrid>
+```
+
+`PluralStringLocalizer` accepts `BindText` and `BindPluralText` too, for rows that carry both forms.
+
+##### Enums are keys, as-is
+
+A bound value does not have to be a string. `BindText` resolves the key from the value itself, so **an enum member is the key** — no converter, no lookup table, no `Description` attributes:
+
+```csharp
+public enum OrderStatus { Active, Pending, Archived }
+
+public record ProductRow(string Name, OrderStatus Status, int Stock);
+```
+
+```json
+{ "Active": "Active", "Pending": "Pending review", "Archived": "Archived" }
+```
+
+```xml
+<TextBlock Text="{i18n:StringLocalizer BindText={Binding Status}}" />
+```
+
+`OrderStatus.Active` resolves the `Active` entry. Matching is case-insensitive — `LocalizationKey` lower-cases every key — so the member name resolves however it is written. Binding a whole enum straight to a list works the same way:
+
+```csharp
+public IReadOnlyList<OrderStatus> StatusOptions { get; } = Enum.GetValues<OrderStatus>();
+```
+
+> [!TIP]
+> Bare member names like `Active` are easy to collide with in a large flat resource file. Put the enum's translations in their own set and point at it with `Namespace`:
+> `{i18n:StringLocalizer BindText={Binding Status}, Namespace='OrderStatus'}`
+
+> [!IMPORTANT]
+> `LocalizeConverter` still ships and is not deprecated, but it cannot re-translate: an `IValueConverter` has no source change to re-trigger it when the culture switches, so its text goes stale while everything else updates. Reach for `BindText` unless you are already invested in the converter, or you need to feed a property that only accepts a `Binding` (for example MAUI's `Picker.ItemDisplayBinding`, which has no item template).
 
 ### Localization in Code-Behind (C#)
 
@@ -557,9 +615,9 @@ public class HomeViewModel
 }
 ```
 
-### List Rendering (DataTemplates & Converters)
+### List Rendering (DataTemplates & Dynamic Keys)
 
-In scenarios where you render lists (like inside a `ComboBox` or `ListBox`), you cannot directly use Markup Extensions (`{i18n:...}`) inside a `DataTemplate` property binding. For this, Barbatos provides the `LocalizeConverter`.
+When you render lists (a `ComboBox`, `ListBox`, `CollectionView`, `DataGrid`) the key usually lives in the item, not in the markup. `Text` is a plain CLR property and cannot take a binding, so bind **`BindText`** instead.
 
 **ViewModel (C#):**
 ```csharp
@@ -577,25 +635,61 @@ public class HomeViewModel
 
 **View (XAML):**
 ```xml
-<Page.Resources>
-    <!-- 1. Declare the Converter -->
-    <i18n:LocalizeConverter x:Key="LocalizeConverter" />
-</Page.Resources>
-
-<!-- 2. Bind the list to ItemsSource -->
 <ComboBox ItemsSource="{Binding AvailableOptions}">
     <ComboBox.ItemTemplate>
         <DataTemplate>
-            <!-- 3. Use the Converter to localize the raw string key from the ViewModel -->
-            <TextBlock Text="{Binding Converter={StaticResource LocalizeConverter}}" />
+            <!-- The bound value is used as the localization key -->
+            <TextBlock Text="{i18n:StringLocalizer BindText={Binding}}" />
         </DataTemplate>
     </ComboBox.ItemTemplate>
 </ComboBox>
 ```
 
+<details>
+<summary>Alternative: <code>LocalizeConverter</code></summary>
+
+`LocalizeConverter` is an `IValueConverter` that does the same lookup for the simple case, and it is still supported. Two limits decide against it for new code: it takes no format arguments, and it does not re-run when the culture changes, so its text goes stale while the rest of the UI updates. Its remaining niche is a property that accepts only a `Binding` and offers no item template — MAUI's `Picker.ItemDisplayBinding`.
+
+```xml
+<Page.Resources>
+    <i18n:LocalizeConverter x:Key="LocalizeConverter" />
+</Page.Resources>
+
+<ComboBox ItemsSource="{Binding AvailableOptions}">
+    <ComboBox.ItemTemplate>
+        <DataTemplate>
+            <TextBlock Text="{Binding Converter={StaticResource LocalizeConverter}}" />
+        </DataTemplate>
+    </ComboBox.ItemTemplate>
+</ComboBox>
+```
+</details>
+
 ### Reactivity (Runtime Culture Change)
 
 Barbatos.i18n **automatically updates your XAML bindings** when the language changes, much like Vue's reactivity system. You don't need to refresh the page or reload the window!
+
+#### How it works
+
+A `MarkupExtension` runs once, when the XAML is loaded, so on its own it could never follow a later culture change. Three pieces close that loop:
+
+1. Every `ILocalizationCultureManager` raises `LocalizationNotifier.CultureChanged` after applying the new culture.
+2. `LocalizationSource` — one per app, in `Barbatos.i18n.Wpf` and `Barbatos.i18n.Maui` — listens for that event and raises `INotifyPropertyChanged` on the UI thread.
+3. `{i18n:StringLocalizer}` and `{i18n:PluralStringLocalizer}` emit a `MultiBinding` that carries `LocalizationSource.Culture` as a hidden extra value, so the binding engine re-runs the lookup and repaints the text in place.
+
+On **MAUI** the extensions always return a binding, so this is always on. On **WPF** the extension returns a binding when the target is a `DependencyProperty` and a plain string otherwise — that keeps `<Setter Value="{i18n:StringLocalizer ...}"/>` and other non-bindable targets working exactly as before, since WPF forbids bindings there.
+
+Use the `Live` property to override the decision:
+
+```xml
+<!-- Force a live binding even where the target could not be detected -->
+<TextBlock Text="{i18n:StringLocalizer Text='Title', Live=True}" />
+
+<!-- Opt out: resolve once, at load time -->
+<TextBlock Text="{i18n:StringLocalizer Text='Title', Live=False}" />
+```
+
+If you replace translation data without changing the culture (for example after downloading updated strings), call `LocalizationSource.Instance.Refresh()` to re-evaluate every live binding.
 
 #### How to change the language
 
@@ -727,7 +821,7 @@ Barbatos is designed to be modular. Only install what you need.
 | [`Barbatos.i18n.Json`](https://www.nuget.org/packages/Barbatos.i18n.Json) | Load translations from JSON files |
 | [`Barbatos.i18n.Ini`](https://www.nuget.org/packages/Barbatos.i18n.Ini) | Load translations from INI files |
 | [`Barbatos.i18n.Csv`](https://www.nuget.org/packages/Barbatos.i18n.Csv) | Load translations from CSV files |
-| [`Barbatos.i18n.Wpf`](https://www.nuget.org/packages/Barbatos.i18n.Wpf) | WPF markup extensions (`StringLocalizer`, `PluralStringLocalizer`, `LocalizeConverter`) |
+| [`Barbatos.i18n.Wpf`](https://www.nuget.org/packages/Barbatos.i18n.Wpf) | WPF markup extensions (`StringLocalizer`, `PluralStringLocalizer`, `LocalizeConverter`) + live translation |
 | [`Barbatos.i18n.Maui`](https://www.nuget.org/packages/Barbatos.i18n.Maui) | .NET MAUI markup extensions and integration |
 
 ---
@@ -744,6 +838,7 @@ In the full reference, you will find comprehensive documentation for:
 - `LocalizationBuilder`, `LocalizationSet`, `LocalizationKey`
 - `ILocalizationProvider`, `ILocalizationCultureManager`
 - `StringLocalizerExtension`, `PluralStringLocalizerExtension`, `LocalizeConverter`
+- `LocalizationNotifier`, `LocalizationSource` (live translation on culture change)
 - `WpfLocalization` (Service Locator bridge)
 - DI Registration Extension Methods
 - Strongly-typed resource key conventions

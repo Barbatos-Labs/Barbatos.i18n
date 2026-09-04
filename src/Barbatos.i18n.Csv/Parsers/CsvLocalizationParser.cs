@@ -44,16 +44,25 @@ internal static class CsvLocalizationParser
                     }
                     else
                     {
+                        // An empty header cell (a trailing comma, for instance) is not a culture. Registering
+                        // it would collide with the empty-string key that marks a single-culture file and make
+                        // the multi-culture overload reject the file with a misleading message.
+                        if (colName.Length == 0)
+                        {
+                            cultures.Add(colName);
+                            continue;
+                        }
+
                         cultures.Add(colName);
                         results[colName] = new();
                         cultureKeys[colName] = new();
                     }
                 }
-                
-                if (row[0].Trim().Equals("Key", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue; // Skip header row
-                }
+
+                // The first row always defines the columns, so it is never data - regardless of whether its
+                // first cell happens to be spelled "Key". Falling through here used to insert the header
+                // itself as a translation entry.
+                continue;
             }
 
             string key = row[0].Trim();
@@ -83,11 +92,19 @@ internal static class CsvLocalizationParser
             }
         }
         
-        // Convert List to IEnumerable for the return type
+        // A dictionary, not the accumulating list: LocalizationSet indexes a set by key on every lookup, and
+        // only takes its O(1) path when the strings are dictionary-backed. Every other parser already returns
+        // one, so a CSV-backed set was alone in scanning all of its entries per key.
         Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> finalResults = new();
         foreach (var kvp in results)
         {
-            finalResults[kvp.Key] = kvp.Value;
+            Dictionary<LocalizationKey, string?> byKey = new();
+            foreach (KeyValuePair<LocalizationKey, string?> pair in kvp.Value)
+            {
+                byKey[pair.Key] = pair.Value;
+            }
+
+            finalResults[kvp.Key] = byKey;
         }
         return finalResults;
     }

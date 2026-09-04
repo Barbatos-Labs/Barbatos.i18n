@@ -8,6 +8,11 @@ namespace Barbatos.i18n.Maui;
 /// <summary>
 /// Provides a markup extension that localizes strings in XAML.
 /// </summary>
+/// <remarks>
+/// The extension returns a <see cref="MultiBinding"/> that observes <see cref="LocalizationSource"/>, so the
+/// translation follows later culture changes without reloading the page. Set <see cref="Live"/> to
+/// <see langword="false"/> to resolve the string once instead.
+/// </remarks>
 [ContentProperty(nameof(Text))]
 public class StringLocalizerExtension : IMarkupExtension<BindingBase>
 {
@@ -40,6 +45,16 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     /// Gets or sets the text to be localized.
     /// </summary>
     public string? Text { get; set; }
+
+    /// <summary>
+    /// Gets or sets a binding that supplies the localization key at runtime.
+    /// </summary>
+    /// <remarks>
+    /// Use this inside a <see cref="DataTemplate"/> - a <c>CollectionView</c>, <c>ListView</c> or <c>Picker</c>
+    /// item - where the key lives in the item itself: <c>{i18n:StringLocalizer BindText={Binding StatusKey}}</c>.
+    /// It takes precedence over <see cref="Text"/>.
+    /// </remarks>
+    public BindingBase? BindText { get; set; } = null;
 
     /// <summary>
     /// Gets or sets the namespace of the text to be localized.
@@ -107,69 +122,31 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
     public string? StringFormat { get; set; } = null;
 
     /// <summary>
+    /// Gets or sets whether the translation re-evaluates when the culture changes.
+    /// </summary>
+    /// <remarks>
+    /// Enabled by default. Set it to <see langword="false"/> to resolve the translation once, at load time, as
+    /// versions before live localization did.
+    /// </remarks>
+    public bool? Live { get; set; } = null;
+
+    /// <summary>
     /// Returns a localized string for the text property.
     /// </summary>
     /// <param name="serviceProvider">An object that provides services for the markup extension.</param>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     public BindingBase ProvideValue(IServiceProvider serviceProvider)
     {
-        bool useBinding = BindArg is not null || BindArg2 is not null || BindArg3 is not null || BindArg4 is not null || BindArg5 is not null;
+        bool keyFromBinding = BindText is not null;
+        bool hasArgBindings = BindArg is not null || BindArg2 is not null || BindArg3 is not null || BindArg4 is not null || BindArg5 is not null;
+        bool cultureSlot = Live != false;
 
-        if (useBinding)
+        if (!keyFromBinding && !hasArgBindings && !cultureSlot)
         {
-            var multiBinding = new MultiBinding
-            {
-                Converter = new StringLocalizerConverter(Text, Namespace, ProviderKey),
-                StringFormat = StringFormat
-            };
-
-            if (BindArg is not null) multiBinding.Bindings.Add(BindArg);
-            else if (Arg is not null) multiBinding.Bindings.Add(new Binding { Source = Arg });
-
-            if (BindArg2 is not null) multiBinding.Bindings.Add(BindArg2);
-            else if (Arg2 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg2 });
-
-            if (BindArg3 is not null) multiBinding.Bindings.Add(BindArg3);
-            else if (Arg3 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg3 });
-
-            if (BindArg4 is not null) multiBinding.Bindings.Add(BindArg4);
-            else if (Arg4 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg4 });
-
-            if (BindArg5 is not null) multiBinding.Bindings.Add(BindArg5);
-            else if (Arg5 is not null) multiBinding.Bindings.Add(new Binding { Source = Arg5 });
-
-            return multiBinding;
+            return new Binding { Source = Localize() };
         }
 
-        CultureInfo currentCulture =
-            MauiLocalization.GetProvider(ProviderKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-
-        string? selectedNamespace = Namespace?.ToLowerInvariant();
-
-        LocalizationSet? localizationSet = MauiLocalization.GetProvider(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace)
-            ?? LocalizationProviderFactory.GetInstance(ProviderKey)?.GetLocalizationSet(currentCulture, selectedNamespace);
-
-        string result = EscapeText(Text) ?? string.Empty;
-        if (localizationSet is not null && Text is not null)
-        {
-            List<object?>? args = null;
-            if (Arg is not null) { args ??= new List<object?>(); args.Add(Arg); }
-            if (Arg2 is not null) { args ??= new List<object?>(); args.Add(Arg2); }
-            if (Arg3 is not null) { args ??= new List<object?>(); args.Add(Arg3); }
-            if (Arg4 is not null) { args ??= new List<object?>(); args.Add(Arg4); }
-            if (Arg5 is not null) { args ??= new List<object?>(); args.Add(Arg5); }
-
-            result = localizationSet.Format(CultureInfo.CurrentCulture, (LocalizationKey)Text, args?.ToArray() ?? null) ?? EscapeText(Text) ?? string.Empty;
-        }
-
-        if (StringFormat is not null)
-        {
-            result = string.Format(StringFormat, result);
-        }
-
-        return new Binding { Source = result };
+        return BuildBinding(cultureSlot, keyFromBinding);
     }
 
     /// <summary>
@@ -207,5 +184,105 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
             .Replace("&apos;", "'")
             .ToString()
             .Trim();
+    }
+
+    /// <summary>
+    /// Creates the binding that watches <see cref="LocalizationSource"/> for culture changes.
+    /// </summary>
+    /// <returns>A one-way binding to the active culture.</returns>
+    /// <remarks>
+    /// Built from an expression rather than a string path: a string-path binding is not trim safe, and the whole
+    /// live-localization feature hangs off this one resolving.
+    /// </remarks>
+    internal static BindingBase CreateCultureBinding() =>
+        Binding.Create(
+            static (LocalizationSource source) => source.Culture,
+            BindingMode.OneWay,
+            source: LocalizationSource.Instance);
+
+    /// <summary>
+    /// Assembles the multi-binding that feeds <see cref="StringLocalizerConverter"/>.
+    /// </summary>
+    /// <param name="cultureSlot">Whether to prepend the <see cref="LocalizationSource"/> culture value.</param>
+    /// <param name="keyFromBinding">Whether the key comes from <see cref="BindText"/>.</param>
+    /// <returns>The assembled multi-binding.</returns>
+    private MultiBinding BuildBinding(bool cultureSlot, bool keyFromBinding)
+    {
+        var multiBinding = new MultiBinding
+        {
+            Converter = new StringLocalizerConverter(Text, Namespace, ProviderKey, cultureSlot, keyFromBinding),
+            StringFormat = StringFormat
+        };
+
+        if (cultureSlot)
+        {
+            multiBinding.Bindings.Add(CreateCultureBinding());
+        }
+
+        if (keyFromBinding)
+        {
+            multiBinding.Bindings.Add(BindText!);
+        }
+
+        AddArgument(multiBinding, BindArg, Arg);
+        AddArgument(multiBinding, BindArg2, Arg2);
+        AddArgument(multiBinding, BindArg3, Arg3);
+        AddArgument(multiBinding, BindArg4, Arg4);
+        AddArgument(multiBinding, BindArg5, Arg5);
+
+        return multiBinding;
+    }
+
+    /// <summary>
+    /// Appends one format argument to the multi-binding, preferring its bound form over its static form.
+    /// </summary>
+    /// <param name="multiBinding">The multi-binding being assembled.</param>
+    /// <param name="binding">The bound form of the argument.</param>
+    /// <param name="value">The static form of the argument.</param>
+    private static void AddArgument(MultiBinding multiBinding, BindingBase? binding, object? value)
+    {
+        if (binding is not null)
+        {
+            multiBinding.Bindings.Add(binding);
+            return;
+        }
+
+        if (value is not null)
+        {
+            multiBinding.Bindings.Add(new Binding { Source = value });
+        }
+    }
+
+    /// <summary>
+    /// Resolves the translation once, for the opted-out static path.
+    /// </summary>
+    /// <returns>The localized string, or the original text if no localization is found.</returns>
+    private string Localize()
+    {
+        string result = EscapeText(Text);
+
+        if (Text is not null)
+        {
+            List<object?>? args = null;
+            if (Arg is not null) { args ??= new List<object?>(); args.Add(Arg); }
+            if (Arg2 is not null) { args ??= new List<object?>(); args.Add(Arg2); }
+            if (Arg3 is not null) { args ??= new List<object?>(); args.Add(Arg3); }
+            if (Arg4 is not null) { args ??= new List<object?>(); args.Add(Arg4); }
+            if (Arg5 is not null) { args ??= new List<object?>(); args.Add(Arg5); }
+
+            result = LocalizationLookup.ResolveFormatted(
+                ProviderKey,
+                LocalizationLookup.NormalizeNamespace(Namespace),
+                Text,
+                CultureInfo.CurrentCulture,
+                args?.ToArray()) ?? EscapeText(Text);
+        }
+
+        if (StringFormat is not null)
+        {
+            result = string.Format(StringFormat, result);
+        }
+
+        return result;
     }
 }

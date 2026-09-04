@@ -18,7 +18,7 @@
   "FirstName": "이름:",
   "LastName": "성:",
   "HeaderPlural": "4. 동적 복수형 번역:",
-  "HeaderAttributes": "5. 피커 항목 번역:",
+  "HeaderAttributes": "5. 목록 항목 번역 (문자열 키 및 열거형):",
   "HeaderStringFormat": "6. 문자열 형식 (선택 사항):",
   "HeaderNamespace": "7. 네임스페이스 사용 (LocalizationSet Name):",
   "HeaderProviderKey": "8. 여러 제공자 (ProviderKey):",
@@ -42,5 +42,11 @@
   "No": "아니오",
   "PromptTitle": "이름 입력",
   "PromptContent": "이름을 입력해 주세요:",
-  "PromptPlaceholder": "여기에 이름을 입력하세요..."
+  "PromptPlaceholder": "여기에 이름을 입력하세요...",
+  "HeaderBindText": "11. 목록의 동적 키 (BindText):",
+  "Active": "판매 중",
+  "Pending": "검토 대기",
+  "Archived": "보관됨",
+  "OneItemInStock": "1개 남음",
+  "ManyItemsInStock": "{0}개 남음"
 }

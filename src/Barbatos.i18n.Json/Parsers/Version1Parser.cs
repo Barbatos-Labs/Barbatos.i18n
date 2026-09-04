@@ -3,40 +3,47 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
-using Barbatos.i18n.Json.Models.v1;
-using System.Text.Json;
-
 namespace Barbatos.i18n.Json.Parsers;
 
 internal sealed class Version1Parser : IJsonLocalizationParser
 {
     public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(string contents)
     {
-        TranslationFile? translationFile = JsonSerializer.Deserialize<TranslationFile>(
-            contents,
-            LocalizationBuilderExtensions.DefaultJsonSerializerOptions
-        );
+        using JsonDocument document = JsonReading.ParseDocument(contents);
 
-        if (translationFile is null)
+        if (!JsonReading.TryFindProperty(document.RootElement, "strings", out JsonElement strings)
+            || strings.ValueKind != JsonValueKind.Array)
         {
-            throw new LocalizationBuilderException("Unable to extract data from json file.");
+            throw new LocalizationBuilderException(
+                "The JSON file declares schema version 1 but has no \"strings\" array."
+            );
         }
 
-        Dictionary<LocalizationKey, string> localizedStrings = new();
+        Dictionary<LocalizationKey, string?> localizedStrings = new();
 
-        foreach (TranslationEntity localizedString in translationFile.Strings)
+        foreach (JsonElement entry in strings.EnumerateArray())
         {
-            LocalizationKey key = new(localizedString.Name);
-            if (localizedStrings.ContainsKey(key))
+            string? name = JsonReading.ReadString(entry, "name");
+
+            if (string.IsNullOrEmpty(name))
             {
                 throw new LocalizationBuilderException(
-                    $"The contents of the JSON file contains duplicate \"{localizedString.Name}\" keys."
+                    "The contents of the JSON file contain an entry without a \"name\"."
                 );
             }
 
-            localizedStrings.Add(key, localizedString.Value);
+            LocalizationKey key = new(name);
+
+            if (localizedStrings.ContainsKey(key))
+            {
+                throw new LocalizationBuilderException(
+                    $"The contents of the JSON file contains duplicate \"{name}\" keys."
+                );
+            }
+
+            localizedStrings.Add(key, JsonReading.ReadString(entry, "value"));
         }
 
-        return localizedStrings!;
+        return localizedStrings;
     }
 }

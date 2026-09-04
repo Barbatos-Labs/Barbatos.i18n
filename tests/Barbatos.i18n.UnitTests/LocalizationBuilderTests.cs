@@ -132,13 +132,20 @@ public sealed class LocalizationBuilderTests
     }
 
     [Fact]
-    public void AddLocalization_DuplicateShouldThrow()
+    public void AddLocalization_DuplicateShouldMerge()
     {
+        // Registering two files into one namespace used to abort startup. Two files can legitimately belong
+        // there - a YAML file's root-level keys and an INI file named after nothing but its culture are both
+        // in the default namespace - so they are merged instead.
         LocalizationBuilder builder = new();
         builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key", "val" } });
-        
-        Action act = () => builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key2", "val2" } });
-        act.Should().Throw<InvalidOperationException>();
+        builder.AddLocalization(new CultureInfo("en-US"), new Dictionary<LocalizationKey, string?> { { "key2", "val2" } });
+
+        builder.SetCulture(new CultureInfo("en-US"));
+        LocalizationSet? set = builder.Build().GetLocalizationSet(new CultureInfo("en-US"), null);
+
+        set!["key"].Should().Be("val");
+        set["key2"].Should().Be("val2");
     }
 
     [Fact]
@@ -165,7 +172,12 @@ public sealed class LocalizationBuilderTests
         // 3. String literal lookup: "Test" works.
         localizationSet!["Test"].Should().Be("안녕하세요");
 
-        // 4. Default value lookup (for XAML): "hello" (the default culture translation) works.
-        localizationSet!["hello"].Should().Be("안녕하세요");
+        // 4. A translated value is not a key. TestResource is a generated RESX designer, so TestResource.Test
+        // returns the translation ("hello" under the neutral culture), not the key name. Looking a translation
+        // up finds nothing, which is exactly why a resource meant for {x:Static} is hand-written to return
+        // nameof - see Strings.cs in the WPF sample and the "Why nameof and not the resource value?" note in
+        // the README. Assertion 1 works despite the runtime value because CallerArgumentExpression reads the
+        // source text "TestResource.Test", not what the property evaluates to.
+        localizationSet!["hello"].Should().BeNull();
     }
 }

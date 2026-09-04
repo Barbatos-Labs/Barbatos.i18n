@@ -20,7 +20,11 @@ public static class LocalizationSetResourceParser
     /// <exception cref="LocalizationBuilderException">Thrown when the resources cannot be found in the assembly.</exception>
     public static LocalizationSet? Parse(Assembly assembly, string baseName, CultureInfo culture)
     {
+        // Both cultures are saved, not just one: an application commonly runs translations and formatting on
+        // different cultures (CurrentUICulture vi-VN, CurrentCulture en-US), and restoring both from a single
+        // saved value silently replaced the UI culture with the formatting one.
         CultureInfo cultureToRestore = Thread.CurrentThread.CurrentCulture;
+        CultureInfo uiCultureToRestore = Thread.CurrentThread.CurrentUICulture;
 
         // NOTE: Fix net framework satellite assembly loading
         try
@@ -54,7 +58,7 @@ public static class LocalizationSetResourceParser
         finally
         {
             Thread.CurrentThread.CurrentCulture = cultureToRestore;
-            Thread.CurrentThread.CurrentUICulture = cultureToRestore;
+            Thread.CurrentThread.CurrentUICulture = uiCultureToRestore;
         }
     }
 }

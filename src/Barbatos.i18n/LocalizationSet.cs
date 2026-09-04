@@ -20,8 +20,18 @@ public record LocalizationSet(
 )
 {
     /// <summary>
-    /// Gets the localized value for the specified string, optionally extracting the property name from a property expression (e.g., <c>TestResource.Test</c>).
+    /// Gets the localized value for the specified string, falling back to the name of the property the value
+    /// came from (e.g. <c>TestResource.Test</c> resolves the "Test" entry).
     /// </summary>
+    /// <param name="value">The key to look up.</param>
+    /// <param name="expression">The caller's source text for <paramref name="value"/>, supplied by the compiler.</param>
+    /// <remarks>
+    /// The value that was actually passed wins. Guessing from the caller's property name first meant that
+    /// <c>set[row.Status]</c>, with a Status of "Active", returned the translation of the key "Status" whenever
+    /// the set happened to carry one - the wrong string, with nothing to indicate it. The property-name guess
+    /// exists for generated RESX designers, whose properties return a translation rather than a key, so it only
+    /// has to apply once the value itself has failed to resolve.
+    /// </remarks>
     public string? this[string? value, [CallerArgumentExpression(nameof(value))] string expression = ""]
     {
         get
@@ -31,23 +41,31 @@ public record LocalizationSet(
                 return null;
             }
 
+            if (this[new LocalizationKey(value)] is string direct)
+            {
+                return direct;
+            }
+
             if (!string.IsNullOrWhiteSpace(expression))
             {
                 string trimmed = expression.Trim();
                 if (trimmed.Length > 0 && trimmed[0] is not ('"' or '\'' or '$' or '@') && trimmed.Contains('.'))
                 {
                     string propertyName = trimmed[(trimmed.LastIndexOf('.') + 1)..].Trim();
-                    if (this[new LocalizationKey(propertyName)] is string result)
-                    {
-                        return result;
-                    }
+
+                    return this[new LocalizationKey(propertyName)];
                 }
             }
 
-            return this[new LocalizationKey(value)];
+            return null;
         }
     }
 
+    /// <summary>
+    /// Gets the translation for a key.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <returns>The translation, or null when this set does not carry the key.</returns>
     public string? this[LocalizationKey key]
     {
         get
@@ -73,10 +91,29 @@ public record LocalizationSet(
         }
     }
 
+    /// <summary>
+    /// Gets the translation for a key with its placeholders filled in.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="arguments">The values to fill the placeholders with.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? this[LocalizationKey key, params object[] arguments] => Format(key, arguments);
 
+    /// <summary>
+    /// Gets the translation for a key, formatted with this set's own culture.
+    /// </summary>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="args">The values to fill the placeholders with, if any.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? Format(LocalizationKey key, params object?[]? args) => Format(null, key, args);
 
+    /// <summary>
+    /// Gets the translation for a key, formatted with the given provider.
+    /// </summary>
+    /// <param name="formatProvider">The provider to format the arguments with, or null to use this set's culture.</param>
+    /// <param name="key">The key to look up.</param>
+    /// <param name="args">The values to fill the placeholders with, if any.</param>
+    /// <returns>The formatted translation, or null when this set does not carry the key.</returns>
     public string? Format(IFormatProvider? formatProvider, LocalizationKey key, params object?[]? args)
     {
         string? value = this[key];
