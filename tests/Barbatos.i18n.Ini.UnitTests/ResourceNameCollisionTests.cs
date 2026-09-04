@@ -60,4 +60,17 @@ public sealed class ResourceNameCollisionTests
             .Select(s => s["Greeting"])
             .Should().Contain("Hello from a prefixed folder");
     }
+
+    [Fact]
+    public void APathMayUseFolderSeparators()
+    {
+        // The reader normalises "/" and "\\" to the dots a manifest resource name uses, so a path written the
+        // way it appears on disk resolves just as well as the dot-notated logical name.
+        LocalizationBuilder builder = new();
+
+        builder.FromIni("Resources/Translations-en-US.ini", Culture);
+        builder.SetCulture(Culture);
+
+        builder.Build().GetLocalizationSet(Culture, "translations").Should().NotBeNull();
+    }
 }

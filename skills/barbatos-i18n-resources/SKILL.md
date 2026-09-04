@@ -48,11 +48,15 @@ it through `ResourceManager`, which is built for exactly that.
 
 ## 2. The path is a resource name, not a file path
 
-Paths use **dots**, matching the logical resource name MSBuild generates — folder separators become dots:
+Paths use **dots**, matching the logical resource name MSBuild generates:
 
 ```csharp
 builder.FromJson("Locales.Strings-en-US.json", new CultureInfo("en-US"));   // Locales/Strings-en-US.json
 ```
+
+Folder separators are accepted and normalised, so `"Locales/Strings-en-US.json"` resolves too. Prefer the
+dotted form anyway: it is what the manifest actually contains, so it is what a diagnostic dump of
+`GetManifestResourceNames()` will show you when something does not match.
 
 The assembly-name prefix is optional; `"MyApp.Locales.Strings-en-US.json"` works too. To load from another
 assembly, pass it explicitly:

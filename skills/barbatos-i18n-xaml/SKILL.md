@@ -85,8 +85,32 @@ Keys are normalized to lower case, so the enum's own casing never has to match t
                   BindCount={Binding Stock}}" />
 ```
 
-The plural form is chosen when the count is greater than 1, and the count is passed as `{0}` to the selected
+The plural form is chosen when the count is greater than **1**, and the count is passed as `{0}` to the selected
 string. `BindText` and `BindPluralText` supply the two keys from bindings when they are data-driven.
+
+**Zero takes the singular form.** `count > 1` is the French rule — zero and one are both singular — and English
+does not work that way, so an English UI renders "0 item left" where it should say "0 items left". If zero is
+reachable in your data, handle it explicitly rather than assuming the extension will:
+
+```xml
+<TextBlock>
+  <TextBlock.Style>
+    <Style TargetType="TextBlock">
+      <Setter Property="Text" Value="{i18n:PluralStringLocalizer Text='OneItemInStock',
+                                      PluralText='ManyItemsInStock', BindCount={Binding Stock}, Live=True}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Stock}" Value="0">
+          <Setter Property="Text" Value="{i18n:StringLocalizer Text='OutOfStock', Live=True}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </TextBlock.Style>
+</TextBlock>
+```
+
+Note the `Live=True` on both: a `Setter.Value` target reports a CLR property, so without it WPF resolves once
+and the text stops following culture changes. A dedicated "out of stock" string usually reads better than a
+grammatically-correct zero anyway.
 
 Because the count is always formatted into the string, avoid a literal `{` or `}` in a plural translation
 unless it is a real placeholder — `string.Format` will reject it.

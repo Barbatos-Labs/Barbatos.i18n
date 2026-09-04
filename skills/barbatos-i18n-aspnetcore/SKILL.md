@@ -13,6 +13,9 @@ this wrong produces a bug that passes every manual test and only appears under r
 
 Two things: turn on ambient culture, and let ASP.NET Core negotiate the request's culture.
 
+The numbering below is for reading order only — `ConfigureLocalizationOptions` and `AddStringLocalizer` may be
+called in either order, since each finds and reuses whatever the other registered.
+
 ```csharp
 // 1. Lookups follow the culture of the current request rather than a shared, process-wide one.
 builder.Services.ConfigureLocalizationOptions(options => options.UseAmbientCulture = true);

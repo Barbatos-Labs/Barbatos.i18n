@@ -39,7 +39,11 @@ public static class LocalizationSetNaming
             throw new ArgumentNullException(nameof(culture));
         }
 
-        string withoutExtension = path;
+        // EmbeddedResourceReader accepts a path written with folder separators and turns them into the dots a
+        // manifest resource name uses, so the same path has to be understood here. Splitting on dots alone left
+        // "Resources/Translations-en-US.ini" named "resources/translations" - the file loaded, but no
+        // Namespace='translations' could address it.
+        string withoutExtension = path.Replace('\\', '.').Replace('/', '.');
 
         int lastDotIndex = withoutExtension.LastIndexOf('.');
         if (lastDotIndex > 0)
