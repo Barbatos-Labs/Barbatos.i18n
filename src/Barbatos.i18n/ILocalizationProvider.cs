@@ -29,7 +29,11 @@ public interface ILocalizationProvider
     /// Retrieves the localization set with the specified name for the specified culture.
     /// </summary>
     /// <param name="culture">The culture to get the localization set for.</param>
-    /// <param name="name">The name of the localization set to get.</param>
+    /// <param name="name">
+    /// The name of the localization set to get, matched case-insensitively. Pass null to ask for the default
+    /// set: the unnamed set is returned when one is registered for the culture, otherwise the first set
+    /// registered for it.
+    /// </param>
     /// <returns>The localization set with the specified name for the specified culture, or null if no localization set is found.</returns>
     LocalizationSet? GetLocalizationSet(CultureInfo culture, string? name);
 

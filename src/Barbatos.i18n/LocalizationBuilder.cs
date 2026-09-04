@@ -112,11 +112,9 @@ public class LocalizationBuilder
     /// <summary>
     /// Adds localized strings from a resource with the specified base name in the specified assembly to the <see cref="LocalizationBuilder"/>.
     /// </summary>
-    /// <param name="builder">The <see cref="LocalizationBuilder"/> to add the localized strings to.</param>
     /// <param name="assembly">The assembly that contains the resource.</param>
     /// <param name="baseName">The base name of the resource.</param>
     /// <param name="culture">The culture for which the localized strings are provided.</param>
-    /// <returns>The <see cref="LocalizationBuilder"/> with the added localized strings.</returns>
     /// <exception cref="LocalizationBuilderException">Thrown when the resource cannot be found.</exception>
     public virtual void FromResource(Assembly assembly, string baseName, CultureInfo culture)
     {

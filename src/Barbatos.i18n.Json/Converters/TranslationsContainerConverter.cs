@@ -26,12 +26,18 @@ internal class TranslationsContainerConverter : JsonConverter<ITranslationsConta
         {
             if (string.Equals(property.Name, "Version", StringComparison.OrdinalIgnoreCase))
             {
-                version = property.Value.GetString() ?? version;
+                // GetString() only accepts a JSON string, so a numeric "version": 2 used to surface as a
+                // JsonException. Read whatever spelling was used and let the caller validate it, so a bad
+                // version is reported as a LocalizationBuilderException naming the problem.
+                version = property.Value.ValueKind == JsonValueKind.String
+                    ? property.Value.GetString() ?? version
+                    : property.Value.ToString();
+
                 break;
             }
         }
 
-        return new TranslationsContainer(new Version(version).ToString());
+        return new TranslationsContainer(version);
     }
 
     public override void Write(

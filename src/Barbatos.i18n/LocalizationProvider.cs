@@ -24,7 +24,12 @@ public class LocalizationProvider(
     {
         if (name is null)
         {
-            return _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture));
+            // A null name asks for the default set. Match the unnamed set first: without this, callers that
+            // specifically want the default one - the XAML extensions with no Namespace argument, or
+            // CompositeStringLocalizer's default-set step - received whichever named set happened to be
+            // enumerated first, and reported keys that do live in the default set as missing.
+            return _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture) && s.Name is null)
+                ?? _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture));
         }
 
         return _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture) && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));

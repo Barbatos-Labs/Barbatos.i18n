@@ -22,7 +22,15 @@ public static class EmbeddedResourceReader
     /// <returns>The content of the resource as a string, or null if the resource could not be found.</returns>
     public static string? ReadToEnd(string path, Assembly assembly)
     {
-        string assemblyName = assembly.GetName().Name;
+        // AssemblyName.Name is nullable: a dynamic assembly, or one loaded from a stream, can have none.
+        // Treating it as non-null used to make string.Replace throw ArgumentNullException on its oldValue.
+        string? assemblyName = assembly.GetName().Name;
+
+        if (string.IsNullOrEmpty(assemblyName))
+        {
+            return ReadResource(assembly, NormalizeSeparators(path));
+        }
+
         string resourceName = assemblyName + ".";
 
         resourceName += path.Replace(
@@ -31,11 +39,25 @@ public static class EmbeddedResourceReader
             StringComparison.InvariantCultureIgnoreCase
         );
 
-        resourceName = MultipleDotRegex.Replace(
-            resourceName.Replace("\\", ".").Replace("/", "."),
-            "."
-        );
+        return ReadResource(assembly, NormalizeSeparators(resourceName));
+    }
 
+    /// <summary>
+    /// Turns path separators into the dots used by manifest resource names and collapses repeated dots.
+    /// </summary>
+    /// <param name="value">The resource path.</param>
+    /// <returns>The normalized manifest resource name.</returns>
+    private static string NormalizeSeparators(string value) =>
+        MultipleDotRegex.Replace(value.Replace("\\", ".").Replace("/", "."), ".");
+
+    /// <summary>
+    /// Reads a manifest resource to the end.
+    /// </summary>
+    /// <param name="assembly">The assembly that contains the resource.</param>
+    /// <param name="resourceName">The manifest resource name.</param>
+    /// <returns>The content of the resource, or null when the assembly has no such resource.</returns>
+    private static string? ReadResource(Assembly assembly, string resourceName)
+    {
         using Stream? stream = assembly.GetManifestResourceStream(resourceName);
 
         if (stream is null)

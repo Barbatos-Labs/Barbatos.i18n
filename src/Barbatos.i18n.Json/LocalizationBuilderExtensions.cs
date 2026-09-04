@@ -128,14 +128,40 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentNullException(nameof(contents));
         }
 
-        Version schemaVersion = new(
-            JsonSerializer
-                .Deserialize<ITranslationsContainer>(contents, DefaultJsonSerializerOptions)
-                ?.Version
-                ?? "1.0.0"
-        );
+        string version = JsonSerializer
+            .Deserialize<ITranslationsContainer>(contents, DefaultJsonSerializerOptions)
+            ?.Version
+            ?? "1.0.0";
 
-        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(schemaVersion.Major);
+        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(version));
         return parser.Parse(contents);
+    }
+
+    /// <summary>
+    /// Reads the major schema version from the value of the file's <c>version</c> property.
+    /// </summary>
+    /// <param name="version">The version as it was written in the file.</param>
+    /// <returns>The major version number.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the value is not a version number.</exception>
+    /// <remarks>
+    /// Both "2.0" and a bare "2" are accepted; only the major component decides which parser runs. Feeding the
+    /// raw value to <see cref="Version"/> used to throw a bare ArgumentException that named neither the file
+    /// nor the offending value.
+    /// </remarks>
+    private static int ReadMajorVersion(string version)
+    {
+        if (Version.TryParse(version, out Version? parsed))
+        {
+            return parsed.Major;
+        }
+
+        if (int.TryParse(version, NumberStyles.Integer, CultureInfo.InvariantCulture, out int major))
+        {
+            return major;
+        }
+
+        throw new LocalizationBuilderException(
+            $"The JSON file declares an unreadable schema version \"{version}\". Expected a value such as \"1.0\" or \"2.0\"."
+        );
     }
 }

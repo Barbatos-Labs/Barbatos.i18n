@@ -22,10 +22,24 @@ internal sealed class Version1Parser : IJsonLocalizationParser
             throw new LocalizationBuilderException("Unable to extract data from json file.");
         }
 
+        if (translationFile.Strings is null)
+        {
+            throw new LocalizationBuilderException(
+                "The JSON file declares schema version 1 but has no \"strings\" array."
+            );
+        }
+
         Dictionary<LocalizationKey, string> localizedStrings = new();
 
         foreach (TranslationEntity localizedString in translationFile.Strings)
         {
+            if (localizedString.Name is null)
+            {
+                throw new LocalizationBuilderException(
+                    "The contents of the JSON file contain an entry without a \"name\"."
+                );
+            }
+
             LocalizationKey key = new(localizedString.Name);
             if (localizedStrings.ContainsKey(key))
             {
