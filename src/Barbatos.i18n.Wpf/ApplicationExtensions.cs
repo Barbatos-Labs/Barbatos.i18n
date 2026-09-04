@@ -13,6 +13,11 @@ public static class ApplicationExtensions
     private static bool _isLanguageOverridden = false;
 
     /// <summary>
+    /// The language of the most recently applied culture, used for windows opened after that change.
+    /// </summary>
+    private static XmlLanguage? _currentLanguage;
+
+    /// <summary>
     /// Configures the application to use a string localizer.
     /// </summary>
     /// <param name="app">The application to configure.</param>
@@ -91,31 +96,89 @@ public static class ApplicationExtensions
     }
 
     /// <summary>
-    /// Overrides the WPF FrameworkElement.Language property to ensure standard WPF bindings (StringFormat) respect the culture.
+    /// Points every window's <see cref="FrameworkElement.Language"/> at the given culture, so that standard WPF
+    /// bindings and <c>StringFormat</c> respect it.
     /// </summary>
+    /// <param name="targetCulture">The culture to apply.</param>
+    /// <remarks>
+    /// WPF allows <see cref="System.Windows.DependencyProperty.OverrideMetadata(Type, PropertyMetadata)"/> only
+    /// once per property per type, so the metadata default is frozen at whatever culture was current the first
+    /// time this ran. Relying on it alone left every visual root other than the main window - a second window, a
+    /// popup, a context menu, a tooltip - on that first culture forever. Each open window is therefore assigned
+    /// explicitly, and a class handler does the same for windows opened later.
+    /// </remarks>
     private static void UpdateWpfLanguageProperty(CultureInfo targetCulture)
     {
+        XmlLanguage language = XmlLanguage.GetLanguage(targetCulture.IetfLanguageTag);
+
         if (!_isLanguageOverridden)
         {
             try
             {
                 FrameworkElement.LanguageProperty.OverrideMetadata(
                     typeof(FrameworkElement),
-                    new FrameworkPropertyMetadata(
-                        XmlLanguage.GetLanguage(targetCulture.IetfLanguageTag)));
-                _isLanguageOverridden = true;
+                    new FrameworkPropertyMetadata(language));
             }
             catch (ArgumentException)
             {
-                // Metadata already overridden by another library or previous call
-                _isLanguageOverridden = true;
+                // Metadata already overridden by another library or previous call.
             }
+
+            // A window can be created after the last culture change, in which case it starts from the frozen
+            // metadata default. Registering once here keeps those windows in step too.
+            EventManager.RegisterClassHandler(
+                typeof(Window),
+                FrameworkElement.LoadedEvent,
+                new RoutedEventHandler(OnWindowLoaded));
+
+            _isLanguageOverridden = true;
         }
 
-        // If the window is already active, we must update its Language property directly
-        if (Application.Current?.MainWindow is not null)
+        _currentLanguage = language;
+
+        Application? application = Application.Current;
+
+        if (application is null)
         {
-            Application.Current.MainWindow.Language = XmlLanguage.GetLanguage(targetCulture.IetfLanguageTag);
+            return;
+        }
+
+        // Windows has thread affinity; touching it from a background thread would throw.
+        if (!application.Dispatcher.CheckAccess())
+        {
+            _ = application.Dispatcher.BeginInvoke(new Action(ApplyLanguageToOpenWindows));
+            return;
+        }
+
+        ApplyLanguageToOpenWindows();
+    }
+
+    /// <summary>
+    /// Assigns the current language to every open window.
+    /// </summary>
+    private static void ApplyLanguageToOpenWindows()
+    {
+        if (_currentLanguage is null || Application.Current is not { } application)
+        {
+            return;
+        }
+
+        foreach (Window window in application.Windows)
+        {
+            window.Language = _currentLanguage;
+        }
+    }
+
+    /// <summary>
+    /// Applies the current language to a window that was opened after the last culture change.
+    /// </summary>
+    /// <param name="sender">The window being loaded.</param>
+    /// <param name="e">The event data.</param>
+    private static void OnWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_currentLanguage is not null && sender is Window window)
+        {
+            window.Language = _currentLanguage;
         }
     }
 }

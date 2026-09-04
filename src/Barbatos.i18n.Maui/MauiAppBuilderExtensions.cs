@@ -56,8 +56,18 @@ public static class MauiAppBuilderExtensions
         }
         else
         {
-            resolver = (LocalizationProviderResolver)(resolverDescriptor.ImplementationInstance
-                ?? throw new InvalidOperationException("ILocalizationProviderResolver registered is not an instance of LocalizationProviderResolver."));
+            // The previous guard only covered a null ImplementationInstance, so a consumer's own
+            // ILocalizationProviderResolver still failed with InvalidCastException.
+            if (resolverDescriptor.ImplementationInstance is not LocalizationProviderResolver registeredResolver)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ILocalizationProviderResolver)} is already registered in a form this method cannot extend. "
+                        + $"Register it as a {nameof(LocalizationProviderResolver)} instance, or add every provider "
+                        + $"through {nameof(UseStringLocalizer)} so the resolver is created here."
+                );
+            }
+
+            resolver = registeredResolver;
         }
 
         resolver.AddProvider(providerKey, provider);

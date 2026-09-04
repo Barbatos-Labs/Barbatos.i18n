@@ -8,11 +8,33 @@ namespace Barbatos.i18n;
 /// <summary>
 /// Provides functionality to retrieve localization sets for specific cultures.
 /// </summary>
-public class LocalizationProvider(
-    CultureInfo _currentCulture,
-    IEnumerable<LocalizationSet> _localizationSets
-) : ILocalizationProvider
+public class LocalizationProvider : ILocalizationProvider
 {
+    private readonly LocalizationSet[] _localizationSets;
+
+    private CultureInfo _currentCulture;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LocalizationProvider"/> class.
+    /// </summary>
+    /// <param name="currentCulture">The culture the provider starts on.</param>
+    /// <param name="localizationSets">The sets this provider serves.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="localizationSets"/> is null.</exception>
+    /// <remarks>
+    /// The sets are copied up front. Holding the sequence itself would re-run a deferred query on every lookup,
+    /// and lookups sit on the hot path: each culture change re-evaluates every live binding on screen.
+    /// </remarks>
+    public LocalizationProvider(CultureInfo currentCulture, IEnumerable<LocalizationSet> localizationSets)
+    {
+        if (localizationSets is null)
+        {
+            throw new ArgumentNullException(nameof(localizationSets));
+        }
+
+        _currentCulture = currentCulture;
+        _localizationSets = localizationSets.ToArray();
+    }
+
     /// <inheritdoc />
     public LocalizationSet? GetLocalizationSet(string cultureName) => GetLocalizationSet(new CultureInfo(cultureName), default);
 
