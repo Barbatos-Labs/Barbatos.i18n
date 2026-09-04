@@ -64,14 +64,14 @@ app.UseHttpsRedirection();
 // https://127.0.0.1:7168/greeting?culture=vi-VN
 app.MapGet("/greeting", ([FromServices] ICompositeStringLocalizer localizer) =>
 {
-    return Results.Ok(new { Message = localizer["Greeting"] });
+    return Results.Ok(new { Message = localizer["Greeting"].Value });
 })
 .WithName("GetGreeting");
 
 // 2. Formatted Date/Time (JSON)
 app.MapGet("/time", ([FromServices] ICompositeStringLocalizer localizer) =>
 {
-    return Results.Ok(new { Message = localizer["CurrentTime", DateTime.Now] });
+    return Results.Ok(new { Message = localizer["CurrentTime", DateTime.Now].Value });
 })
 .WithName("GetTime");
 
@@ -79,14 +79,14 @@ app.MapGet("/time", ([FromServices] ICompositeStringLocalizer localizer) =>
 app.MapGet("/price", ([FromServices] ICompositeStringLocalizer localizer) =>
 {
     decimal price = 1500.50m;
-    return Results.Ok(new { Message = localizer["Price", price] });
+    return Results.Ok(new { Message = localizer["Price", price].Value });
 })
 .WithName("GetPrice");
 
 // 4. Nested JSON Keys
 app.MapGet("/errors/notfound", ([FromServices] ICompositeStringLocalizer localizer) =>
 {
-    return Results.NotFound(new { Message = localizer["Errors.NotFound"] });
+    return Results.NotFound(new { Message = localizer["Errors.NotFound"].Value });
 })
 .WithName("GetNotFoundError");
 

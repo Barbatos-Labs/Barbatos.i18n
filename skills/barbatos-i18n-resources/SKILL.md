@@ -19,6 +19,33 @@ The library reads translations out of the assembly, never off disk. A file that 
 </ItemGroup>
 ```
 
+### Separate the culture with a dash, not a dot
+
+This one is worth getting right up front because the failure is baffling: the build succeeds, the file is
+embedded, and loading it still throws "resource not found".
+
+MSBuild infers a culture from a file named `<something>.<culture>.<ext>` and moves it into a **satellite
+assembly**. The library reads the main assembly, so the file is simply not there.
+
+| File name | MSBuild sees | Result |
+|---|---|---|
+| `Strings-en-US.json` | no culture — a dash is just a character | Stays in the main assembly |
+| `en-US.json` | no culture — nothing before the culture to split on | Stays in the main assembly |
+| `Strings.en-US.json` | culture `en-US` | **Moved to a satellite assembly, not found** |
+
+Naming with a dash avoids the whole problem. If a dotted name is fixed for other reasons, opt out explicitly:
+
+```xml
+<EmbeddedResource Include="Locales\Strings.en-US.json">
+  <LogicalName>MyApp.Locales.Strings.en-US.json</LogicalName>
+  <Type>Non-Resx</Type>
+  <WithCulture>false</WithCulture>
+</EmbeddedResource>
+```
+
+RESX is the deliberate exception: `Strings.vi-VN.resx` *should* become a satellite, and `FromResource` reads
+it through `ResourceManager`, which is built for exactly that.
+
 ## 2. The path is a resource name, not a file path
 
 Paths use **dots**, matching the logical resource name MSBuild generates — folder separators become dots:
