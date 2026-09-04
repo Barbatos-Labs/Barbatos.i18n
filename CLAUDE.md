@@ -100,6 +100,11 @@ static fallback". **Use them** —
 do not hand-roll the `GetProvider(...) ?? LocalizationProviderFactory.GetInstance(...)` pair again; it used to be
 duplicated at ten sites (five per UI package) and resolved each registry twice per lookup.
 
+When one call site needs **both** a value and the language it is in - the plural converters do, since the form
+depends on the language - take `GetProviders(providerKey)` once and pass the resulting `ProviderPair` to
+`ResolveValue`, reading `.Culture` from the same pair. Asking `LocalizationLookup` two separate questions costs
+two `IServiceProvider.GetService` calls per conversion, which is the same duplication in a new shape.
+
 Both registries are keyed by `ProviderKey` (empty string = default), which is what the XAML `ProviderKey='...'`
 argument selects.
 

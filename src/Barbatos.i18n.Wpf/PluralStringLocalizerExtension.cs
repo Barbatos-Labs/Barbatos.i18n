@@ -211,7 +211,9 @@ public class PluralStringLocalizerExtension : MarkupExtension
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private object Localize()
     {
-        bool isPlural = IsSelectedNumberPlural();
+        // Resolved once: the language decides the form, the same providers then answer the lookup.
+        LocalizationLookup.ProviderPair providers = LocalizationLookup.GetProviders(ProviderKey);
+        bool isPlural = PluralRules.IsPlural(Count ?? 0, providers.Culture);
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
         string? selectedKey = isPlural ? PluralText : Text;
@@ -222,7 +224,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
 
         string localizedString =
             LocalizationLookup.ResolveValue(
-                ProviderKey,
+                providers,
                 LocalizationLookup.NormalizeNamespace(Namespace),
                 selectedKey ?? string.Empty)
             ?? StringLocalizerExtension.EscapeText(selectedKey);
@@ -235,15 +237,6 @@ public class PluralStringLocalizerExtension : MarkupExtension
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Determines if the selected number is plural.
-    /// </summary>
-    /// <returns>True if the number is greater than 1, false otherwise.</returns>
-    private bool IsSelectedNumberPlural()
-    {
-        return PluralRules.IsPlural(Count ?? 0, LocalizationLookup.ResolveCulture(ProviderKey));
     }
 
     /// <summary>

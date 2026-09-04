@@ -57,34 +57,50 @@ internal static class LocalizationLookup
     /// raw name. Sets are searched in registration order, so a key defined in more than one of them resolves to
     /// whichever file was registered first.
     /// </remarks>
-    internal static string? ResolveValue(string providerKey, string? normalizedNamespace, LocalizationKey key)
-    {
-        ILocalizationProvider? provider = WpfLocalization.GetProvider(providerKey);
-        ILocalizationProvider? fallback = LocalizationProviderFactory.GetInstance(providerKey);
-
-        return Search(provider, normalizedNamespace, key) ?? Search(fallback, normalizedNamespace, key);
-    }
-
+    internal static string? ResolveValue(string providerKey, string? normalizedNamespace, LocalizationKey key) =>
+        ResolveValue(GetProviders(providerKey), normalizedNamespace, key);
 
     /// <summary>
-    /// Gets the language a provider is currently serving.
+    /// The two registries, already resolved, so a caller that needs both a value and its language pays the
+    /// service-locator and dictionary lookups once rather than once per question.
+    /// </summary>
+    /// <param name="Primary">The provider from the dependency injection registry, if any.</param>
+    /// <param name="Fallback">The provider from the static registry, if any.</param>
+    internal readonly record struct ProviderPair(ILocalizationProvider? Primary, ILocalizationProvider? Fallback)
+    {
+        /// <summary>
+        /// Gets the language these providers are serving.
+        /// </summary>
+        /// <remarks>
+        /// Translations are selected from this culture, so anything that depends on the language of the
+        /// resulting text - the plural form, most obviously - has to ask the same question of the same source.
+        /// Reading the ambient UI culture instead looks equivalent because SetCulture assigns both, but an
+        /// application that configures its language on the builder and never calls the culture manager leaves
+        /// them different: the provider serves French while the thread still says English, and
+        /// "0 article restant" came back pluralised as "0 articles restants".
+        /// </remarks>
+        internal CultureInfo Culture =>
+            Primary?.GetCulture() ?? Fallback?.GetCulture() ?? CultureInfo.CurrentUICulture;
+    }
+
+    /// <summary>
+    /// Resolves both registries for a provider key.
     /// </summary>
     /// <param name="providerKey">The provider key.</param>
-    /// <returns>The provider's culture, or the ambient UI culture when no provider is registered.</returns>
-    /// <remarks>
-    /// Translations are selected from this culture, so anything that depends on the language of the resulting
-    /// text - plural form, most obviously - has to ask the same question of the same source. Reading the
-    /// ambient UI culture instead looks equivalent because SetCulture assigns both, but an application that
-    /// configures its language on the builder and never calls the culture manager leaves them different: the
-    /// provider serves French while the thread still says English, and "0 article restant" came back pluralised
-    /// as "0 articles restants".
-    /// </remarks>
-    internal static CultureInfo ResolveCulture(string providerKey)
-    {
-        return WpfLocalization.GetProvider(providerKey)?.GetCulture()
-            ?? LocalizationProviderFactory.GetInstance(providerKey)?.GetCulture()
-            ?? CultureInfo.CurrentUICulture;
-    }
+    /// <returns>The resolved pair, either half of which may be null.</returns>
+    internal static ProviderPair GetProviders(string providerKey) =>
+        new(WpfLocalization.GetProvider(providerKey), LocalizationProviderFactory.GetInstance(providerKey));
+
+    /// <summary>
+    /// Resolves a key to its raw translation against providers that are already resolved.
+    /// </summary>
+    /// <param name="providers">The resolved registries.</param>
+    /// <param name="normalizedNamespace">The lower-cased namespace, or null to search every set.</param>
+    /// <param name="key">The localization key.</param>
+    /// <returns>The translation, or null when no set carries the key.</returns>
+    internal static string? ResolveValue(in ProviderPair providers, string? normalizedNamespace, LocalizationKey key) =>
+        Search(providers.Primary, normalizedNamespace, key) ?? Search(providers.Fallback, normalizedNamespace, key);
+
 
     /// <summary>
     /// Lower-cases a namespace once, so the hot path does not allocate a new string on every value read.
