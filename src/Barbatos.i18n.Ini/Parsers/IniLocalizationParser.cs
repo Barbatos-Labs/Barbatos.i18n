@@ -55,14 +55,8 @@ internal static class IniLocalizationParser
                 
                 if (!isQuoted)
                 {
-                    int semicolonIndex = value.IndexOf(';');
-                    int hashIndex = value.IndexOf('#');
-                    
-                    int commentIndex = -1;
-                    if (semicolonIndex >= 0 && hashIndex >= 0) commentIndex = Math.Min(semicolonIndex, hashIndex);
-                    else if (semicolonIndex >= 0) commentIndex = semicolonIndex;
-                    else if (hashIndex >= 0) commentIndex = hashIndex;
-                    
+                    int commentIndex = FindInlineCommentIndex(value);
+
                     if (commentIndex >= 0)
                     {
                         value = value.Substring(0, commentIndex).Trim();
@@ -79,7 +73,30 @@ internal static class IniLocalizationParser
                 localizations.Add(locKey, value);
             }
         }
-        
+
         return localizations;
+    }
+
+    /// <summary>
+    /// Finds where an inline comment starts in an unquoted value.
+    /// </summary>
+    /// <param name="value">The trimmed value to scan.</param>
+    /// <returns>The index the comment starts at, or -1 when the value carries none.</returns>
+    /// <remarks>
+    /// An inline comment must be preceded by whitespace. Without that rule every unquoted value containing a
+    /// '#' or ';' was truncated at it - "#FF0000" collapsed to an empty string, and "Barbatos; all rights
+    /// reserved" lost everything after the semicolon.
+    /// </remarks>
+    private static int FindInlineCommentIndex(string value)
+    {
+        for (int i = 1; i < value.Length; i++)
+        {
+            if ((value[i] == ';' || value[i] == '#') && char.IsWhiteSpace(value[i - 1]))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }

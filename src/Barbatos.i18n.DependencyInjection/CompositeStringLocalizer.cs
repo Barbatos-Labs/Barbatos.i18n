@@ -100,7 +100,7 @@ public class CompositeStringLocalizer<TResource>(
     ILocalizationCultureManager cultureManager
 ) : ICompositeStringLocalizer<TResource>
 {
-    private static readonly string? ResourceName = typeof(TResource).FullName?.ToLower();
+    private static readonly string? ResourceName = typeof(TResource).FullName?.ToLowerInvariant();
 
     /// <inheritdoc />
     public LocalizedString this[string name] => this[name, []];

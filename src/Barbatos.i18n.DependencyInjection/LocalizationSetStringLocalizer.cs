@@ -35,18 +35,13 @@ public class LocalizationSetStringLocalizer(LocalizationSet _localizationSet) : 
     /// <returns>The string with filled placeholders.</returns>
     private LocalizedString LocalizeString(string name, object[] placeholders)
     {
-        if(placeholders is null || !placeholders.Any())
-        {
-            return new LocalizedString(
-                name,
-                _localizationSet[name] ?? name
-            );
-        }
+        string? value = (placeholders is null || placeholders.Length == 0)
+            ? _localizationSet[name]
+            : _localizationSet[name, placeholders];
 
-        return new LocalizedString(
-            name,
-            _localizationSet[name, placeholders] ?? name
-        );
+        // The third argument is what lets callers tell a real translation from a key echoed back, which is how
+        // tooling audits for missing strings.
+        return new LocalizedString(name, value ?? name, value is null);
     }
 }
 
@@ -76,7 +71,7 @@ public class ProviderBasedStringLocalizer<TResource>(
         return localizations
                 .GetLocalizationSet(
                     cultureManager.GetCulture(),
-                    typeof(TResource).FullName?.ToLower()
+                    typeof(TResource).FullName?.ToLowerInvariant()
                 )
                 ?.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key))
             ?? [];
@@ -92,7 +87,7 @@ public class ProviderBasedStringLocalizer<TResource>(
     {
         LocalizationSet? localizationSet = localizations.GetLocalizationSet(
             cultureManager.GetCulture(),
-            typeof(TResource).FullName?.ToLower()
+            typeof(TResource).FullName?.ToLowerInvariant()
         );
 
         if (localizationSet is null)

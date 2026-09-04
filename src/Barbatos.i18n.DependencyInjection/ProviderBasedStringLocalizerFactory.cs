@@ -20,7 +20,7 @@ public class ProviderBasedStringLocalizerFactory(
     /// <inheritdoc />
     public IStringLocalizer Create(Type resourceSource)
     {
-        string? baseName = resourceSource.FullName?.ToLower().Trim();
+        string? baseName = resourceSource.FullName?.ToLowerInvariant().Trim();
 
         return Create(baseName ?? default, default);
     }
