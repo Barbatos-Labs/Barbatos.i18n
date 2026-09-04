@@ -12,6 +12,16 @@ public class LocalizationProvider : ILocalizationProvider
 {
     private readonly LocalizationSet[] _localizationSets;
 
+    /// <summary>
+    /// The sets grouped by culture name, so a lookup does not rescan every set for each culture it tries.
+    /// </summary>
+    /// <remarks>
+    /// Lookups sit on the hot path: one culture change re-evaluates every live binding on screen, and each of
+    /// those walks the culture fallback chain. Scanning the whole array per chain step made that cost grow with
+    /// the number of registered files. Sets are copied and immutable, so the index can be built once.
+    /// </remarks>
+    private readonly Dictionary<string, LocalizationSet[]> _setsByCulture;
+
     private CultureInfo _currentCulture;
 
     /// <summary>
@@ -33,6 +43,13 @@ public class LocalizationProvider : ILocalizationProvider
 
         _currentCulture = currentCulture;
         _localizationSets = localizationSets.ToArray();
+
+        // CultureInfo.Equals compares names ordinally, so grouping by name preserves the previous matching
+        // exactly while making the per-culture lookup a hash probe. Registration order is kept within a group,
+        // which is what decides precedence when a key lives in more than one set.
+        _setsByCulture = _localizationSets
+            .GroupBy(s => s.Culture.Name, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
     }
 
     /// <inheritdoc />
@@ -65,18 +82,44 @@ public class LocalizationProvider : ILocalizationProvider
     /// <returns>The matching set, or null.</returns>
     private LocalizationSet? MatchSet(CultureInfo culture, string? name)
     {
+        LocalizationSet[] candidates = SetsFor(culture);
+
         if (name is null)
         {
             // A null name asks for the default set. Match the unnamed set first: without this, callers that
-            // specifically want the default one - the XAML extensions with no Namespace argument, or
-            // CompositeStringLocalizer's default-set step - received whichever named set happened to be
-            // enumerated first, and reported keys that do live in the default set as missing.
-            return _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture) && s.Name is null)
-                ?? _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture));
+            // specifically want the default one - CompositeStringLocalizer's default-set step, say - received
+            // whichever named set happened to be enumerated first, and reported keys that do live in the
+            // default set as missing. The XAML extensions do not come through here; with no Namespace they
+            // search every set for the key instead.
+            foreach (LocalizationSet set in candidates)
+            {
+                if (set.Name is null)
+                {
+                    return set;
+                }
+            }
+
+            return candidates.Length > 0 ? candidates[0] : null;
         }
 
-        return _localizationSets.FirstOrDefault(s => s.Culture.Equals(culture) && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+        foreach (LocalizationSet set in candidates)
+        {
+            if (string.Equals(set.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return set;
+            }
+        }
+
+        return null;
     }
+
+    /// <summary>
+    /// Gets the sets registered for one exact culture.
+    /// </summary>
+    /// <param name="culture">The culture to look up.</param>
+    /// <returns>The sets in registration order, or an empty array when the culture has none.</returns>
+    private LocalizationSet[] SetsFor(CultureInfo culture) =>
+        _setsByCulture.TryGetValue(culture.Name, out LocalizationSet[]? sets) ? sets : [];
 
     /// <inheritdoc />
     public CultureInfo GetCulture()
@@ -94,6 +137,5 @@ public class LocalizationProvider : ILocalizationProvider
     public IEnumerable<LocalizationSet> GetLocalizationSets() => _localizationSets;
 
     /// <inheritdoc />
-    public IEnumerable<LocalizationSet> GetLocalizationSets(CultureInfo culture) =>
-        _localizationSets.Where(s => s.Culture.Equals(culture));
+    public IEnumerable<LocalizationSet> GetLocalizationSets(CultureInfo culture) => SetsFor(culture);
 }

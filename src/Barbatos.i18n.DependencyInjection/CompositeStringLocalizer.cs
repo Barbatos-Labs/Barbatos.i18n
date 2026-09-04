@@ -33,20 +33,30 @@ public class CompositeStringLocalizer(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        if (!includeParentCultures)
-        {
-            return localizations.GetLocalizationSets(culture)
-                .SelectMany(s => s.Strings)
-                .Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
-        }
+        return Flatten(CulturesToSearch(culture, includeParentCultures).SelectMany(localizations.GetLocalizationSets));
+    }
 
-        // A key defined at several levels is reported once, with the most specific culture winning.
-        return CultureFallback.EnumerateChain(culture)
-            .SelectMany(localizations.GetLocalizationSets)
-            .SelectMany(s => s.Strings)
+    /// <summary>
+    /// Chooses which cultures a <c>GetAllStrings</c> call covers.
+    /// </summary>
+    /// <param name="culture">The active culture.</param>
+    /// <param name="includeParentCultures">Whether parent cultures are in scope.</param>
+    /// <returns>The cultures to search, most specific first.</returns>
+    internal static IEnumerable<CultureInfo> CulturesToSearch(CultureInfo culture, bool includeParentCultures) =>
+        includeParentCultures ? CultureFallback.EnumerateChain(culture) : [culture];
+
+    /// <summary>
+    /// Flattens sets into localized strings, reporting a key defined more than once only once.
+    /// </summary>
+    /// <param name="sets">The sets to flatten, most specific culture first.</param>
+    /// <returns>One entry per distinct key.</returns>
+    /// <remarks>
+    /// Grouping preserves first-appearance order, so the most specific culture wins.
+    /// </remarks>
+    internal static IEnumerable<LocalizedString> Flatten(IEnumerable<LocalizationSet> sets) =>
+        sets.SelectMany(s => s.Strings)
             .GroupBy(pair => pair.Key)
             .Select(group => new LocalizedString(group.Key, group.First().Value ?? group.Key));
-    }
 
     /// <summary>
     /// Resolves the localized string for the given key by searching across all registered
@@ -124,28 +134,25 @@ public class CompositeStringLocalizer<TResource>(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        // Start with the resource-scoped set. The lookup walks parent cultures on its own, so a result from a
-        // less specific culture is discarded when the caller said not to include parents.
-        LocalizationSet? primarySet = localizations.GetLocalizationSet(culture, ResourceName);
-        if (primarySet is not null && (includeParentCultures || primarySet.Culture.Equals(culture)))
+        CultureInfo[] cultures = CompositeStringLocalizer
+            .CulturesToSearch(culture, includeParentCultures)
+            .ToArray();
+
+        // The resource-scoped sets come first. Asking for parent cultures has to widen the result rather than
+        // stop at the most specific set that matches, otherwise a key defined only in a neutral "en" set is
+        // missing from a lookup made under "en-US" even though the caller asked for parents.
+        LocalizationSet[] resourceSets = cultures
+            .SelectMany(localizations.GetLocalizationSets)
+            .Where(s => string.Equals(s.Name, ResourceName, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (resourceSets.Length > 0)
         {
-            return primarySet.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
+            return CompositeStringLocalizer.Flatten(resourceSets);
         }
 
-        if (includeParentCultures)
-        {
-            // A key defined at several levels is reported once, with the most specific culture winning.
-            return CultureFallback.EnumerateChain(culture)
-                .SelectMany(localizations.GetLocalizationSets)
-                .SelectMany(s => s.Strings)
-                .GroupBy(pair => pair.Key)
-                .Select(group => new LocalizedString(group.Key, group.First().Value ?? group.Key));
-        }
-
-        // Fallback: aggregate all sets for the culture
-        return localizations.GetLocalizationSets(culture)
-            .SelectMany(s => s.Strings)
-            .Select(x => new LocalizedString(x.Key, x.Value ?? x.Key));
+        // Fallback: aggregate every set the cultures in scope offer.
+        return CompositeStringLocalizer.Flatten(cultures.SelectMany(localizations.GetLocalizationSets));
     }
 
     /// <summary>

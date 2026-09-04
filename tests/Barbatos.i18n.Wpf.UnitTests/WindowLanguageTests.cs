@@ -56,6 +56,46 @@ public sealed class WindowLanguageTests
             "the window must pick up the current culture rather than the frozen metadata default");
     }
 
+
+    [Fact]
+    public void WindowWithAnApplicationSetLanguage_IsLeftAlone()
+    {
+        string language = RunOnStaThread(() =>
+        {
+            ((Application)null!).SetLocalizationCulture(new CultureInfo("ko-KR"));
+
+            // An application can pin one window's formatting independently of the UI language - a report
+            // preview, say - and that choice has to survive.
+            var window = new Window { Language = XmlLanguage.GetLanguage("de-DE") };
+            window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, window));
+
+            return window.Language.IetfLanguageTag;
+        });
+
+        language.Should().Be("de-de", "a language the application set itself must not be overwritten");
+    }
+
+    [Fact]
+    public void WindowAdoptedByTheLibrary_KeepsFollowingLaterCultureChanges()
+    {
+        (string first, string second) = RunOnStaThread(() =>
+        {
+            ((Application)null!).SetLocalizationCulture(new CultureInfo("vi-VN"));
+
+            var window = new Window();
+            window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, window));
+            string afterAdoption = window.Language.IetfLanguageTag;
+
+            // Adopting the window gives it a local value; that must not make it look application-owned.
+            ((Application)null!).SetLocalizationCulture(new CultureInfo("ko-KR"));
+            window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, window));
+
+            return (afterAdoption, window.Language.IetfLanguageTag);
+        });
+
+        first.Should().Be("vi-vn");
+        second.Should().Be("ko-kr", "a window the library adopted stays in step with later culture changes");
+    }
     private static T RunOnStaThread<T>(Func<T> body)
     {
         T result = default!;

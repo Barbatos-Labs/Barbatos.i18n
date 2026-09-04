@@ -9,7 +9,7 @@ internal sealed class Version1Parser : IJsonLocalizationParser
 {
     public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(string contents)
     {
-        using JsonDocument document = JsonDocument.Parse(contents, JsonReading.DocumentOptions);
+        using JsonDocument document = JsonReading.ParseDocument(contents);
 
         if (!JsonReading.TryFindProperty(document.RootElement, "strings", out JsonElement strings)
             || strings.ValueKind != JsonValueKind.Array)

@@ -131,7 +131,7 @@ public static class LocalizationBuilderExtensions
     /// <exception cref="LocalizationBuilderException">Thrown when the root of the file is not an object.</exception>
     private static string ReadVersion(string contents)
     {
-        using JsonDocument document = JsonDocument.Parse(contents, JsonReading.DocumentOptions);
+        using JsonDocument document = JsonReading.ParseDocument(contents);
 
         if (document.RootElement.ValueKind != JsonValueKind.Object)
         {

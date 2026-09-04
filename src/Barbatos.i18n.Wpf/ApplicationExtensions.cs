@@ -3,6 +3,8 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
+using System.Runtime.CompilerServices;
+
 namespace Barbatos.i18n.Wpf;
 
 /// <summary>
@@ -16,6 +18,20 @@ public static class ApplicationExtensions
     /// The language of the most recently applied culture, used for windows opened after that change.
     /// </summary>
     private static XmlLanguage? _currentLanguage;
+
+    /// <summary>
+    /// The windows whose language this library owns, so an application-set language is never overwritten.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="ConditionalWeakTable{TKey, TValue}"/> keeps no strong reference, so a closed window is
+    /// collected as usual.
+    /// </remarks>
+    private static readonly ConditionalWeakTable<Window, object> _managedWindows = new();
+
+    /// <summary>
+    /// The value stored for every tracked window; only the presence of the entry carries meaning.
+    /// </summary>
+    private static readonly object ManagedWindow = new();
 
     /// <summary>
     /// Configures the application to use a string localizer.
@@ -165,7 +181,7 @@ public static class ApplicationExtensions
 
         foreach (Window window in application.Windows)
         {
-            window.Language = _currentLanguage;
+            ApplyLanguage(window);
         }
     }
 
@@ -176,9 +192,41 @@ public static class ApplicationExtensions
     /// <param name="e">The event data.</param>
     private static void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
-        if (_currentLanguage is not null && sender is Window window)
+        if (sender is Window window)
         {
-            window.Language = _currentLanguage;
+            ApplyLanguage(window);
         }
+    }
+
+    /// <summary>
+    /// Points one window's <see cref="FrameworkElement.Language"/> at the current culture, unless the
+    /// application set that window's language itself.
+    /// </summary>
+    /// <param name="window">The window to update.</param>
+    /// <remarks>
+    /// A window whose XAML says <c>Language="de-DE"</c> is asking for formatting that does not follow the UI
+    /// language - a report preview, say - so overwriting it would silently break that window. A local value is
+    /// therefore adopted only the first time it is seen, and only when the application left it unset; from then
+    /// on the window is tracked and keeps following the culture. The table holds weak references, so a closed
+    /// window is still collected.
+    /// </remarks>
+    private static void ApplyLanguage(Window window)
+    {
+        if (_currentLanguage is null)
+        {
+            return;
+        }
+
+        if (!_managedWindows.TryGetValue(window, out _))
+        {
+            if (window.ReadLocalValue(FrameworkElement.LanguageProperty) != DependencyProperty.UnsetValue)
+            {
+                return;
+            }
+
+            _managedWindows.Add(window, ManagedWindow);
+        }
+
+        window.Language = _currentLanguage;
     }
 }

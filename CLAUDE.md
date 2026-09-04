@@ -104,14 +104,16 @@ argument selects.
 
 `ILocalizationCultureManager` has three implementations that must stay behaviourally aligned:
 
-- `Barbatos.i18n/LocalizationCultureManager.cs` — non-DI; updates only the default-keyed static provider.
+- `Barbatos.i18n/LocalizationCultureManager.cs` — non-DI; fans out over `LocalizationProviderFactory.GetAllInstances()`.
 - `Barbatos.i18n.DependencyInjection/DependencyInjectionLocalizationCultureManager.cs` — fans out to all providers.
 - a private `DefaultLocalizationCultureManager` nested in `Barbatos.i18n.Maui/MauiAppBuilderExtensions.cs` — used
   when a MAUI app does not reference the DI package.
 
 All three must: apply `FormatCultureBuilder`, set `CurrentUICulture`/`CurrentCulture` (+ the `DefaultThread*`
-variants), push the culture into providers, and **then** raise `LocalizationNotifier.CultureChanged`. When you
-touch one, check the other two.
+variants), push the culture into **every** provider, and **then** raise `LocalizationNotifier.CultureChanged`.
+When you touch one, check the other two. "Every provider" is not a detail: while the non-DI one moved only the
+default-keyed provider, a `ProviderKey=` string stayed in the old language while the live bindings around it
+repainted. `KeyedProviderCultureTests` pins this.
 
 ### Live localization (culture changes repaint in place)
 

@@ -22,6 +22,32 @@ internal static class JsonReading
     internal static readonly JsonDocumentOptions DocumentOptions = new() { AllowTrailingCommas = true };
 
     /// <summary>
+    /// Parses a localization file, reporting a syntax error as a <see cref="LocalizationBuilderException"/>.
+    /// </summary>
+    /// <param name="contents">The JSON contents.</param>
+    /// <returns>The parsed document, which the caller owns and must dispose.</returns>
+    /// <exception cref="LocalizationBuilderException">Thrown when the contents are not valid JSON.</exception>
+    /// <remarks>
+    /// Every other failure in this package is reported as a <see cref="LocalizationBuilderException"/>, so a
+    /// consumer that catches it to name the offending file would otherwise still be torn down by a raw
+    /// <see cref="JsonException"/> when a locale file is merely mis-edited.
+    /// </remarks>
+    internal static JsonDocument ParseDocument(string contents)
+    {
+        try
+        {
+            return JsonDocument.Parse(contents, DocumentOptions);
+        }
+        catch (JsonException exception)
+        {
+            throw new LocalizationBuilderException(
+                $"The JSON localization file is not valid JSON: {exception.Message}",
+                exception
+            );
+        }
+    }
+
+    /// <summary>
     /// Finds a property by name, ignoring case as the previous serializer options did.
     /// </summary>
     /// <param name="element">The object to search.</param>

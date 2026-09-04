@@ -11,7 +11,7 @@ internal sealed class Version2Parser : IJsonLocalizationParser
     {
         // Shares the version-1 parse options, so a trailing comma is tolerated in both schemas rather than only
         // in the one that used to go through JsonSerializerOptions.
-        using JsonDocument document = JsonDocument.Parse(contents, JsonReading.DocumentOptions);
+        using JsonDocument document = JsonReading.ParseDocument(contents);
         Dictionary<LocalizationKey, string> localizedStrings = new();
 
         foreach (JsonProperty property in document.RootElement.EnumerateObject())

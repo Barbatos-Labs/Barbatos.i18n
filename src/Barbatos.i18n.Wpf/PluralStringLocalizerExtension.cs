@@ -225,8 +225,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
                 ProviderKey,
                 LocalizationLookup.NormalizeNamespace(Namespace),
                 selectedKey ?? string.Empty)
-            ?? selectedKey
-            ?? string.Empty;
+            ?? StringLocalizerExtension.EscapeText(selectedKey);
 
         string result = Prepare(CultureInfo.CurrentCulture, localizedString, Count ?? 0);
 
