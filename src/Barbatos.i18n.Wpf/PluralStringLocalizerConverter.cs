@@ -105,14 +105,14 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
         string? key = Text;
         if (_keyFromBinding)
         {
-            key = index < values.Length ? ReadKey(values[index]) : null;
+            key = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
             index++;
         }
 
         string? pluralKey = PluralText;
         if (_pluralKeyFromBinding)
         {
-            pluralKey = index < values.Length ? ReadKey(values[index]) : null;
+            pluralKey = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
             index++;
         }
 
@@ -174,38 +174,13 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
     }
 
     /// <summary>
-    /// Reads a localization key out of a bound value.
-    /// </summary>
-    /// <param name="value">The bound value.</param>
-    /// <returns>The key, or null when the value carries none.</returns>
-    private static string? ReadKey(object? value)
-    {
-        if (value is null || value == DependencyProperty.UnsetValue)
-        {
-            return null;
-        }
-
-        if (value is string text)
-        {
-            return text;
-        }
-
-        if (value is LocalizationKey localizationKey)
-        {
-            return localizationKey.ToString();
-        }
-
-        return value.ToString();
-    }
-
-    /// <summary>
     /// Reads a count out of a bound value.
     /// </summary>
     /// <param name="value">The bound value.</param>
     /// <returns>The count, or null when the value carries none.</returns>
     private static int? ReadCount(object? value)
     {
-        if (value is null || value == DependencyProperty.UnsetValue)
+        if (StringLocalizerConverter.IsUnset(value))
         {
             return null;
         }
@@ -215,7 +190,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
             return count;
         }
 
-        return int.TryParse(value.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int parsed)
+        return int.TryParse(value!.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int parsed)
             ? parsed
             : null;
     }

@@ -214,6 +214,17 @@ public class StringLocalizerExtension : MarkupExtension
     }
 
     /// <summary>
+    /// Creates the binding that watches <see cref="LocalizationSource"/> for culture changes.
+    /// </summary>
+    /// <returns>A one-way binding to the active culture.</returns>
+    internal static BindingBase CreateCultureBinding() =>
+        new Binding(nameof(LocalizationSource.Culture))
+        {
+            Source = LocalizationSource.Instance,
+            Mode = BindingMode.OneWay
+        };
+
+    /// <summary>
     /// Assembles the multi-binding that feeds <see cref="StringLocalizerConverter"/>.
     /// </summary>
     /// <param name="cultureSlot">Whether to prepend the <see cref="LocalizationSource"/> culture value.</param>
@@ -225,12 +236,7 @@ public class StringLocalizerExtension : MarkupExtension
 
         if (cultureSlot)
         {
-            multiBinding.Bindings.Add(
-                new Binding(nameof(LocalizationSource.Culture))
-                {
-                    Source = LocalizationSource.Instance,
-                    Mode = BindingMode.OneWay
-                });
+            multiBinding.Bindings.Add(CreateCultureBinding());
         }
 
         if (keyFromBinding)

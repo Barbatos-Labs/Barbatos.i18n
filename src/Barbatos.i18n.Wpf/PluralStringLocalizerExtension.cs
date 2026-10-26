@@ -179,12 +179,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
 
         if (cultureSlot)
         {
-            multiBinding.Bindings.Add(
-                new Binding(nameof(LocalizationSource.Culture))
-                {
-                    Source = LocalizationSource.Instance,
-                    Mode = BindingMode.OneWay
-                });
+            multiBinding.Bindings.Add(StringLocalizerExtension.CreateCultureBinding());
         }
 
         if (keyFromBinding)
