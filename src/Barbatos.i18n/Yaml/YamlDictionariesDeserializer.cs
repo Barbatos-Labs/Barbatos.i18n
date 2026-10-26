@@ -17,7 +17,8 @@ public static class YamlDictionariesDeserializer
     /// </summary>
     /// <param name="input">The YAML contents.</param>
     /// <returns>
-    /// The namespaces found in the file, keyed by name; root-level keys are collected under "default".
+    /// The namespaces found in the file, keyed by name. Root-level keys are collected under "default"; a key under a
+    /// header belongs to that header's namespace only.
     /// </returns>
     public static IDictionary<string, IDictionary<string, string>> FromString(string input)
     {
@@ -58,8 +59,12 @@ public static class YamlDictionariesDeserializer
                 continue;
             }
 
-            // Check for end of namespace
-            if (line.IndexOf(trimmedLine, StringComparison.Ordinal) < currentIndentation)
+            // Check for end of namespace. A key in column 0 is a root-level key, and so is one indented less than the
+            // header it follows. Testing only the second meant a header in column 0 never ended, and a root key
+            // written after its block was filed under that header.
+            int indentation = line.IndexOf(trimmedLine, StringComparison.Ordinal);
+
+            if (indentation == 0 || indentation < currentIndentation)
             {
                 currentNamespace = DefaultNamespace;
                 currentIndentation = 0;
@@ -103,6 +108,19 @@ public static class YamlDictionariesDeserializer
         return value;
     }
 
+    /// <summary>
+    /// Adds a key to the dictionary of its namespace, creating that dictionary on first use.
+    /// </summary>
+    /// <param name="dict">The namespaces read so far.</param>
+    /// <param name="namespaceKey">The namespace the key belongs to.</param>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The translation.</param>
+    /// <remarks>
+    /// A key goes to its own namespace only. Keys under a header used to be copied into the default namespace as
+    /// well, so a lookup that reads the default set first - the C# localizers do - answered from a YAML header
+    /// where the XAML lookup, which follows registration order, answered from another file; and two headers
+    /// sharing a key left the default namespace holding whichever came last.
+    /// </remarks>
     private static void AddToDictionary(
         IDictionary<string, IDictionary<string, string>> dict,
         string namespaceKey,
@@ -110,22 +128,12 @@ public static class YamlDictionariesDeserializer
         string value
     )
     {
-        if (!dict.ContainsKey(namespaceKey))
+        if (!dict.TryGetValue(namespaceKey, out IDictionary<string, string>? strings))
         {
-            dict[namespaceKey] = new Dictionary<string, string>();
+            strings = new Dictionary<string, string>();
+            dict[namespaceKey] = strings;
         }
 
-        dict[namespaceKey][key] = value;
-
-        // If it's not a nested namespace, also add to default
-        if (!namespaceKey.Contains("."))
-        {
-            if (!dict.ContainsKey(DefaultNamespace))
-            {
-                dict[DefaultNamespace] = new Dictionary<string, string>();
-            }
-
-            dict[DefaultNamespace][key] = value;
-        }
+        strings[key] = value;
     }
 }

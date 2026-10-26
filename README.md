@@ -165,7 +165,7 @@ CSV keys are accessed exactly as they appear in the `Key` column.
 - **C#:** `localizer["NetworkError"]` *(see Code-Behind section)*
 
 ##### 4. YAML (`Locales.en-US.yaml`)
-YAML provides a clean, highly readable syntax. Similar to JSON, nested nodes become part of the key.
+YAML provides a clean, highly readable syntax. Unlike JSON, a top-level header does not prefix its keys: it names a **namespace**, the way a file name does for the other formats.
 ```yaml
 MessageTitle: Hello from Code-Behind
 GreetingWithName: Hello {0}
@@ -174,9 +174,9 @@ Errors:
 ```
 
 **How to use these keys:**
-Like JSON, YAML nodes are flattened. Access nested keys using dots or colons.
-- **XAML:** `Text="{i18n:StringLocalizer Text='Errors.NetworkError'}"`
-- **C#:** `localizer["Errors.NetworkError"]` *(see Code-Behind section)*
+Keys at the root level (`MessageTitle`, `GreetingWithName`) go to the default namespace. A key under a header belongs to that header's namespace only, so `NetworkError` here lives in the `errors` namespace.
+- **XAML:** `Text="{i18n:StringLocalizer Text='NetworkError', Namespace='errors'}"`, or `Text='NetworkError'` alone to search every namespace
+- **C#:** `localizer["NetworkError"]` through `ICompositeStringLocalizer`, which searches every namespace *(see Code-Behind section)*
 
 ##### 5. RESX (`Strings.en-US.resx`)
 Standard Microsoft `.resx` files are supported. These files must include the standard `<xsd:schema>` and `<resheader>` elements, along with your `<data>` pairs.
