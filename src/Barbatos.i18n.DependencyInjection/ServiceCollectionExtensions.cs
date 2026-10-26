@@ -89,9 +89,24 @@ public static class ServiceCollectionExtensions
 
         configure(builder);
 
-        var provider = builder.Build();
+        ILocalizationProvider provider = builder.Build();
 
-        var resolverDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ILocalizationProviderResolver));
+        GetOrAddResolver(services).AddProvider(providerKey, provider);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Returns the resolver an earlier call registered, or registers one along with the services that read from it.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The resolver that providers are added to.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <see cref="ILocalizationProviderResolver"/> is registered in a form this method cannot extend.
+    /// </exception>
+    private static LocalizationProviderResolver GetOrAddResolver(IServiceCollection services)
+    {
+        ServiceDescriptor? resolverDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ILocalizationProviderResolver));
         LocalizationProviderResolver resolver;
 
         if (resolverDescriptor is null)
@@ -130,8 +145,6 @@ public static class ServiceCollectionExtensions
             resolver = registeredResolver;
         }
 
-        resolver.AddProvider(providerKey, provider);
-
-        return services;
+        return resolver;
     }
 }
