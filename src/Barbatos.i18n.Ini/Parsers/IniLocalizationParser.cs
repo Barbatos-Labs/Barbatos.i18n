@@ -65,12 +65,10 @@ internal static class IniLocalizationParser
                 
                 string fullKey = string.IsNullOrEmpty(currentSection) ? key : $"{currentSection}.{key}";
                 
-                LocalizationKey locKey = new(fullKey);
-                if (localizations.ContainsKey(locKey))
+                if (!localizations.TryAdd(new LocalizationKey(fullKey), value))
                 {
                     throw new LocalizationBuilderException($"The contents of the INI file contains duplicate \"{fullKey}\" keys.");
                 }
-                localizations.Add(locKey, value);
             }
         }
 
