@@ -7,5 +7,5 @@ namespace Barbatos.i18n.Json.Parsers;
 
 internal interface IJsonLocalizationParser
 {
-    IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(string contents);
+    IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(JsonElement root);
 }
