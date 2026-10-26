@@ -123,8 +123,10 @@ Settings:
 ```
 
 Unlike every other format, a YAML file's namespaces come from its **headers**, not its file name: this
-produces a `settings` set. Keys written at the root level, before any header, go to the default namespace, so
-one file can contribute to several sets at once.
+produces a `settings` set holding `title` and `theme`. A header does not prefix its keys - the key is `Title`, in
+the `settings` namespace, not `Settings.Title`. Keys written at the root level, before or after a header block, go
+to the default namespace, so one file can contribute to several sets at once. A key under a header belongs to
+that namespace only; earlier versions also copied it into the default namespace.
 
 A line whose value ends in a colon is fine (`EnterName: Enter Name:`), but a key with an empty value reads as
 a namespace header — give it a value, even an empty quoted string.

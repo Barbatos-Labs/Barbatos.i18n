@@ -68,8 +68,8 @@ public class LocalizationBuilder
 - **`FromResource(Assembly assembly, string baseName, CultureInfo culture)`**
   Extracts localized strings from an embedded `.resx` resource using the specified assembly and base name.
 
-- **`FromYaml(string filePath, CultureInfo culture)`**
-  Parses a YAML file from the filesystem and extracts its key-value pairs into a `LocalizationSet`. *(Built into the core package)*.
+- **`FromYaml(string path, CultureInfo culture)`**
+  Reads an embedded YAML resource and registers one `LocalizationSet` per namespace: the root-level keys in the default namespace, and each top-level header as a namespace of its own holding only the keys under it. *(Built into the core package)*.
 
 - **`SetCulture(CultureInfo culture)`**
   Sets the default fallback culture for the provider being built.

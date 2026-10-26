@@ -29,8 +29,11 @@ follow the `barbatos-dev-add-file-format` skill; the invariants below apply to a
   `-{culture}` suffix, lowercased, so `Translations-en-US.ini` becomes `translations`. When nothing but the culture
   is left, the **folder** names the set: `Locales.en-US.ini` becomes `locales`, so all languages share one
   namespace instead of `en-us`/`vi-vn`/`ko-kr`; with no folder either, it returns null - the default namespace.
-  `LocalizationSetNamingTests` pins all of it. YAML is the exception: its namespaces come from its headers, and
-  root-level keys go to the default namespace. A multi-culture CSV derives one name against the invariant culture.
+  `LocalizationSetNamingTests` pins all of it. YAML is the exception: its namespaces come from its headers,
+  root-level keys (column 0, before or after a header block) go to the default namespace, and a key under a header
+  belongs to that namespace only - it used to be copied into the default namespace too, which made the C#
+  localizers disagree with the XAML lookup (`YamlNamespaceTests`, `YamlNamespacePrecedenceTests`). A multi-culture
+  CSV derives one name against the invariant culture.
 - **Same name and culture merge** in `LocalizationBuilder.AddLocalization`; the first registered wins per key (see
   `core-lookup.md`).
 - **Parsers return a `Dictionary`** typed as `IEnumerable<KeyValuePair<LocalizationKey, string?>>`, because
