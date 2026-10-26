@@ -13,7 +13,8 @@ namespace Barbatos.i18n.DependencyInjection;
 /// <para>
 /// When resolving a key, <see cref="CompositeStringLocalizer"/> first attempts to find the key
 /// in the default (unnamed) localization set. If not found, it falls back to searching
-/// all localization sets registered with the provider for the current culture.
+/// all localization sets registered with the provider for the current culture and then for each of its parent
+/// cultures, so translations registered for "en" also serve "en-GB".
 /// </para>
 /// </remarks>
 public class CompositeStringLocalizer(
@@ -60,13 +61,13 @@ public class CompositeStringLocalizer(
 
     /// <summary>
     /// Resolves the localized string for the given key by searching across all registered
-    /// localization sets for the current culture.
+    /// localization sets for the current culture and its parents.
     /// </summary>
     private LocalizedString LocalizeString(string name, object[] placeholders) =>
         LocalizationSetLookup.ToLocalizedString(name, Find(localizations, cultureManager.GetCulture(), name, placeholders));
 
     /// <summary>
-    /// Searches the default set first, then every set registered for the culture.
+    /// Searches the default set first, then every set registered for the culture and each of its parents.
     /// </summary>
     /// <param name="localizations">The provider to search.</param>
     /// <param name="culture">The culture to search.</param>
@@ -74,7 +75,15 @@ public class CompositeStringLocalizer(
     /// <param name="placeholders">The format arguments, possibly empty.</param>
     /// <returns>The translation, or null when no set carries the key.</returns>
     /// <remarks>
+    /// <para>
+    /// The second step walks the culture fallback chain, as the XAML lookup does, each culture in full before a
+    /// less specific one. It used to search the exact culture only, so under "en-GB" a key in any named "en" set
+    /// but the first came back as missing - the usual layout on a server, where files are registered for the
+    /// neutral language and requests arrive with a region.
+    /// </para>
+    /// <para>
     /// <see cref="CompositeStringLocalizer{TResource}"/> runs the same search once its own scoped set has missed.
+    /// </para>
     /// </remarks>
     internal static string? Find(ILocalizationProvider localizations, CultureInfo culture, string name, object[] placeholders)
     {
@@ -84,12 +93,15 @@ public class CompositeStringLocalizer(
             return value;
         }
 
-        // Fallback: search all localization sets for the current culture
-        foreach (LocalizationSet set in localizations.GetLocalizationSets(culture))
+        // Fallback: search every set, most specific culture first and in registration order within one
+        foreach (CultureInfo candidate in CultureFallback.EnumerateChain(culture))
         {
-            if (LocalizationSetLookup.Find(set, name, placeholders) is { } match)
+            foreach (LocalizationSet set in localizations.GetLocalizationSets(candidate))
             {
-                return match;
+                if (LocalizationSetLookup.Find(set, name, placeholders) is { } match)
+                {
+                    return match;
+                }
             }
         }
 
@@ -109,7 +121,7 @@ public class CompositeStringLocalizer(
 /// <list type="number">
 ///   <item><description>Localization set matching <c>typeof(TResource).FullName</c> (case-insensitive)</description></item>
 ///   <item><description>Default (unnamed) localization set</description></item>
-///   <item><description>All other localization sets for the current culture</description></item>
+///   <item><description>All other localization sets for the current culture, then for each parent culture</description></item>
 /// </list>
 /// </para>
 /// </remarks>
