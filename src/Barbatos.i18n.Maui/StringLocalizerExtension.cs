@@ -263,19 +263,12 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
 
         if (Text is not null)
         {
-            List<object?>? args = null;
-            if (Arg is not null) { args ??= new List<object?>(); args.Add(Arg); }
-            if (Arg2 is not null) { args ??= new List<object?>(); args.Add(Arg2); }
-            if (Arg3 is not null) { args ??= new List<object?>(); args.Add(Arg3); }
-            if (Arg4 is not null) { args ??= new List<object?>(); args.Add(Arg4); }
-            if (Arg5 is not null) { args ??= new List<object?>(); args.Add(Arg5); }
-
             result = LocalizationLookup.ResolveFormatted(
                 ProviderKey,
                 LocalizationLookup.NormalizeNamespace(Namespace),
                 Text,
                 CultureInfo.CurrentCulture,
-                args?.ToArray()) ?? EscapeText(Text);
+                CollectArguments()) ?? EscapeText(Text);
         }
 
         if (StringFormat is not null)
@@ -284,5 +277,20 @@ public class StringLocalizerExtension : IMarkupExtension<BindingBase>
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Collects the static format arguments that were set, in declaration order.
+    /// </summary>
+    /// <returns>The arguments, or null when none was set.</returns>
+    /// <remarks>
+    /// An unset argument is skipped rather than left as a hole, so <see cref="Arg"/> and <see cref="Arg3"/> fill
+    /// <c>{0}</c> and <c>{1}</c> - the same order <see cref="BuildBinding"/> gives the bound values.
+    /// </remarks>
+    private object?[]? CollectArguments()
+    {
+        object?[] arguments = new[] { Arg, Arg2, Arg3, Arg4, Arg5 }.Where(argument => argument is not null).ToArray();
+
+        return arguments.Length > 0 ? arguments : null;
     }
 }

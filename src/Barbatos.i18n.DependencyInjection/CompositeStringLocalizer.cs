@@ -62,40 +62,38 @@ public class CompositeStringLocalizer(
     /// Resolves the localized string for the given key by searching across all registered
     /// localization sets for the current culture.
     /// </summary>
-    private LocalizedString LocalizeString(string name, object[] placeholders)
+    private LocalizedString LocalizeString(string name, object[] placeholders) =>
+        LocalizationSetLookup.ToLocalizedString(name, Find(localizations, cultureManager.GetCulture(), name, placeholders));
+
+    /// <summary>
+    /// Searches the default set first, then every set registered for the culture.
+    /// </summary>
+    /// <param name="localizations">The provider to search.</param>
+    /// <param name="culture">The culture to search.</param>
+    /// <param name="name">The key.</param>
+    /// <param name="placeholders">The format arguments, possibly empty.</param>
+    /// <returns>The translation, or null when no set carries the key.</returns>
+    /// <remarks>
+    /// <see cref="CompositeStringLocalizer{TResource}"/> runs the same search once its own scoped set has missed.
+    /// </remarks>
+    internal static string? Find(ILocalizationProvider localizations, CultureInfo culture, string name, object[] placeholders)
     {
-        CultureInfo culture = cultureManager.GetCulture();
-
         // First, try the default (unnamed) localization set
-        LocalizationSet? localizationSet = localizations.GetLocalizationSet(culture, default);
-
-        string? value = TryResolveFromSet(localizationSet, name, placeholders);
-
-        if (value is not null)
+        if (LocalizationSetLookup.Find(localizations.GetLocalizationSet(culture, default), name, placeholders) is { } value)
         {
-            return new LocalizedString(name, value, false);
+            return value;
         }
 
         // Fallback: search all localization sets for the current culture
-        foreach (var set in localizations.GetLocalizationSets(culture))
+        foreach (LocalizationSet set in localizations.GetLocalizationSets(culture))
         {
-            value = TryResolveFromSet(set, name, placeholders);
-            if (value is not null)
+            if (LocalizationSetLookup.Find(set, name, placeholders) is { } match)
             {
-                return new LocalizedString(name, value, false);
+                return match;
             }
         }
 
-        return new LocalizedString(name, name, true);
-    }
-
-    private static string? TryResolveFromSet(LocalizationSet? set, string name, object[] placeholders)
-    {
-        if (set is null) return null;
-
-        return (placeholders is null || placeholders.Length == 0)
-            ? set[name]
-            : set[name, placeholders];
+        return null;
     }
 }
 
@@ -162,43 +160,11 @@ public class CompositeStringLocalizer<TResource>(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        // 1. Try the resource-scoped localization set first
-        LocalizationSet? resourceSet = localizations.GetLocalizationSet(culture, ResourceName);
-        string? value = TryResolveFromSet(resourceSet, name, placeholders);
+        // 1. The resource-scoped set first, then 2. the default set and 3. every other set, exactly as the
+        // non-generic localizer searches.
+        string? value = LocalizationSetLookup.Find(localizations.GetLocalizationSet(culture, ResourceName), name, placeholders)
+            ?? CompositeStringLocalizer.Find(localizations, culture, name, placeholders);
 
-        if (value is not null)
-        {
-            return new LocalizedString(name, value, false);
-        }
-
-        // 2. Try the default (unnamed) localization set
-        LocalizationSet? defaultSet = localizations.GetLocalizationSet(culture, default);
-        value = TryResolveFromSet(defaultSet, name, placeholders);
-
-        if (value is not null)
-        {
-            return new LocalizedString(name, value, false);
-        }
-
-        // 3. Fallback: search all localization sets for the current culture
-        foreach (var set in localizations.GetLocalizationSets(culture))
-        {
-            value = TryResolveFromSet(set, name, placeholders);
-            if (value is not null)
-            {
-                return new LocalizedString(name, value, false);
-            }
-        }
-
-        return new LocalizedString(name, name, true);
-    }
-
-    private static string? TryResolveFromSet(LocalizationSet? set, string name, object[] placeholders)
-    {
-        if (set is null) return null;
-
-        return (placeholders is null || placeholders.Length == 0)
-            ? set[name]
-            : set[name, placeholders];
+        return LocalizationSetLookup.ToLocalizedString(name, value);
     }
 }

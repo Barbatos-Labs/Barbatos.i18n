@@ -179,12 +179,7 @@ public class PluralStringLocalizerExtension : MarkupExtension
 
         if (cultureSlot)
         {
-            multiBinding.Bindings.Add(
-                new Binding(nameof(LocalizationSource.Culture))
-                {
-                    Source = LocalizationSource.Instance,
-                    Mode = BindingMode.OneWay
-                });
+            multiBinding.Bindings.Add(StringLocalizerExtension.CreateCultureBinding());
         }
 
         if (keyFromBinding)
@@ -211,25 +206,13 @@ public class PluralStringLocalizerExtension : MarkupExtension
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private object Localize()
     {
-        // Resolved once: the language decides the form, the same providers then answer the lookup.
-        LocalizationLookup.ProviderPair providers = LocalizationLookup.GetProviders(ProviderKey);
-        bool isPlural = PluralRules.IsPlural(Count ?? 0, providers.Culture);
-
-        // Fall back to whichever form was actually supplied when the preferred one is missing.
-        string? selectedKey = isPlural ? PluralText : Text;
-        if (string.IsNullOrEmpty(selectedKey))
-        {
-            selectedKey = isPlural ? Text : PluralText;
-        }
-
-        string localizedString =
-            LocalizationLookup.ResolveValue(
-                providers,
-                LocalizationLookup.NormalizeNamespace(Namespace),
-                selectedKey ?? string.Empty)
-            ?? StringLocalizerExtension.EscapeText(selectedKey);
-
-        string result = Prepare(CultureInfo.CurrentCulture, localizedString, Count ?? 0);
+        // The same steps the live converter runs, so the two paths cannot select different forms.
+        string result = PluralStringLocalizerConverter.Localize(
+            ProviderKey,
+            LocalizationLookup.NormalizeNamespace(Namespace),
+            Text,
+            PluralText,
+            Count ?? 0);
 
         if (StringFormat is not null)
         {
@@ -237,22 +220,5 @@ public class PluralStringLocalizerExtension : MarkupExtension
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Prepares the localized string by replacing placeholders with the provided parameters.
-    /// </summary>
-    /// <param name="culture">The culture to use for formatting.</param>
-    /// <param name="text">The text to prepare.</param>
-    /// <param name="parameters">The parameters to replace the placeholders with.</param>
-    /// <returns>The prepared text.</returns>
-    private static string Prepare(CultureInfo culture, string? text, params object[] parameters)
-    {
-        if (text is null)
-        {
-            return string.Empty;
-        }
-
-        return string.Format(culture, text, parameters);
     }
 }

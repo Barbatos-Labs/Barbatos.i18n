@@ -143,9 +143,9 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
     /// </summary>
     /// <param name="value">The bound value.</param>
     /// <returns>The key, or null when the value carries none.</returns>
-    private static string? ReadKey(object? value)
+    internal static string? ReadKey(object? value)
     {
-        if (value is null || value == DependencyProperty.UnsetValue)
+        if (IsUnset(value))
         {
             return null;
         }
@@ -160,6 +160,14 @@ public sealed class StringLocalizerConverter : IMultiValueConverter
             return localizationKey.ToString();
         }
 
-        return value.ToString();
+        return value!.ToString();
     }
+
+    /// <summary>
+    /// Determines whether a bound value carries no data.
+    /// </summary>
+    /// <param name="value">The bound value.</param>
+    /// <returns>True when the value is null or unset; otherwise false.</returns>
+    internal static bool IsUnset(object? value) =>
+        value is null || ReferenceEquals(value, DependencyProperty.UnsetValue);
 }

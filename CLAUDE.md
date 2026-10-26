@@ -56,6 +56,17 @@ fails on `main` (ko-KR RESX lookup returns null) and **passes on this branch** �
 it. Treat a failure there as a real regression in the RESX satellite loading path, not as pre-existing noise,
 and never "fix" it by weakening the assertion.
 
+`LocalizationCultureManagerTests.SetCulture_ShouldUseCustomCulture_WhenCustomBuilderIsProvided` fails on Linux and
+passes on Windows: it expects the vi-VN short date `14/06/2026`, which is Windows (NLS) culture data, while ICU
+formats it `14/6/2026`. That one is environmental, not a regression.
+
+### Building on Linux
+
+The WPF library and its tests compile on Linux with `-p:EnableWindowsTargeting=true`, but the tests cannot run
+there. The MAUI package needs the workload and Windows for its own test project; its sources do compile against
+the plain `net10.0` assets of `Microsoft.Maui.Controls`, and the MAUI tests pass that way, which is enough to
+check a change before it reaches a Windows machine.
+
 ## Architecture
 
 ### Resolution chain
@@ -109,8 +120,8 @@ Both registries are keyed by `ProviderKey` (empty string = default), which is wh
 argument selects.
 
 **Do not populate both registries for the same key with different cultures.** `ResolveValue` searches DI and
-then falls back to the static registry, while `ResolveCulture` - which decides the plural form - returns the DI
-provider's culture whenever one exists. If the DI provider lacks the key and the static one supplies it, the
+then falls back to the static registry, while `ProviderPair.Culture` - which decides the plural form - returns the
+DI provider's culture whenever one exists. If the DI provider lacks the key and the static one supplies it, the
 text comes from one language and its grammar from the other: measured as English "0 item left", the French
 rule applied to an English string. Resolving that properly would mean searching for the key twice on the hot
 path to find out which provider answered, which is not worth paying on every binding for what is really a
@@ -163,12 +174,16 @@ WPF and MAUI differ deliberately here: MAUI always returns a `BindingBase`, whil
 when `IProvideValueTarget.TargetProperty is DependencyProperty` (see `StringLocalizerExtension.IsBindableTarget`),
 falling back to a plain string for targets like `Setter.Value` that report a CLR `PropertyInfo`. That gives WPF
 **two code paths that must stay behaviourally identical** — `BuildBinding` and `Localize()`. They have drifted before.
+MAUI has the same pair once `Live = false`. Prefer sharing a step between the two paths over keeping it in sync
+by hand; `OneOffPathParityTests` (MAUI) runs both paths over the same inputs and compares them.
 
 ### Pluralization
 
 `PluralRules.IsPlural` in the core package is the single place the singular/plural choice is made - both
-converters and both extensions call it, so WPF and MAUI cannot drift. They pass
-`LocalizationLookup.ResolveCulture(ProviderKey)`, **not** the ambient UI culture: the translation was selected
+converters call it, so WPF and MAUI cannot drift. Within each package the selection itself (pick the form, fall
+back to the other key, resolve, fill the count in) lives once, in `PluralStringLocalizerConverter.Localize`, and
+the extension's one-off `Localize()` calls it rather than keeping a copy. It passes
+`LocalizationLookup.GetProviders(ProviderKey).Culture`, **not** the ambient UI culture: the translation was selected
 from the provider's culture, so the form has to be decided by the same one. An application that sets its
 language on the builder and never calls the culture manager leaves the two different, and reading the thread
 gave French text with English grammar. One is singular, any other non-zero
@@ -228,6 +243,10 @@ async context - so no middleware calls `SetCulture` at all. `AmbientCultureTests
 `ProviderBasedStringLocalizer` is scoped to one set (`baseName`), while `ICompositeStringLocalizer` searches the
 default set first and then every set for the current culture — that is the one to recommend to consumers who do
 not want to know which file a key lives in.
+
+All four localizers read a set through the internal `LocalizationSetLookup`; they differ only in which sets they
+ask for and in what order. Those differences are deliberate - the non-generic `ProviderBasedStringLocalizer`
+falls back to the default set, `ProviderBasedStringLocalizer<T>` does not - and `LookupPrecedenceTests` pins them.
 
 ## Conventions
 

@@ -105,14 +105,14 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
         string? key = Text;
         if (_keyFromBinding)
         {
-            key = index < values.Length ? ReadKey(values[index]) : null;
+            key = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
             index++;
         }
 
         string? pluralKey = PluralText;
         if (_pluralKeyFromBinding)
         {
-            pluralKey = index < values.Length ? ReadKey(values[index]) : null;
+            pluralKey = index < values.Length ? StringLocalizerConverter.ReadKey(values[index]) : null;
             index++;
         }
 
@@ -127,10 +127,28 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
             count = boundCount;
         }
 
+        return Localize(ProviderKey, _normalizedNamespace, key, pluralKey, count);
+    }
+
+    /// <summary>
+    /// Selects the singular or plural key for a count, resolves it and fills the count in.
+    /// </summary>
+    /// <param name="providerKey">The provider key.</param>
+    /// <param name="normalizedNamespace">The lower-cased namespace, or null to search every set.</param>
+    /// <param name="key">The singular key.</param>
+    /// <param name="pluralKey">The plural key.</param>
+    /// <param name="count">The count being rendered.</param>
+    /// <returns>The formatted translation, or the selected key itself when no translation is found.</returns>
+    /// <remarks>
+    /// <see cref="PluralStringLocalizerExtension"/> calls this for its one-off path too. It used to carry its own
+    /// copy of these steps, and the two paths have to pick the same form for the same input.
+    /// </remarks>
+    internal static string Localize(string providerKey, string? normalizedNamespace, string? key, string? pluralKey, int count)
+    {
         // PluralRules owns the decision so WPF, MAUI, the converters and the extensions cannot drift apart,
         // and so that zero follows the language rather than always taking the singular.
         // Resolved once: the language decides the form, the same providers then answer the lookup.
-        LocalizationLookup.ProviderPair providers = LocalizationLookup.GetProviders(ProviderKey);
+        LocalizationLookup.ProviderPair providers = LocalizationLookup.GetProviders(providerKey);
         bool isPlural = PluralRules.IsPlural(count, providers.Culture);
 
         // Fall back to whichever form was actually supplied when the preferred one is missing.
@@ -141,7 +159,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
         }
 
         string localizedString =
-            LocalizationLookup.ResolveValue(providers, _normalizedNamespace, selectedKey ?? string.Empty)
+            LocalizationLookup.ResolveValue(providers, normalizedNamespace, selectedKey ?? string.Empty)
             ?? StringLocalizerExtension.EscapeText(selectedKey);
 
         return string.Format(CultureInfo.CurrentCulture, localizedString, count);
@@ -156,38 +174,13 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
     }
 
     /// <summary>
-    /// Reads a localization key out of a bound value.
-    /// </summary>
-    /// <param name="value">The bound value.</param>
-    /// <returns>The key, or null when the value carries none.</returns>
-    private static string? ReadKey(object? value)
-    {
-        if (value is null || value == DependencyProperty.UnsetValue)
-        {
-            return null;
-        }
-
-        if (value is string text)
-        {
-            return text;
-        }
-
-        if (value is LocalizationKey localizationKey)
-        {
-            return localizationKey.ToString();
-        }
-
-        return value.ToString();
-    }
-
-    /// <summary>
     /// Reads a count out of a bound value.
     /// </summary>
     /// <param name="value">The bound value.</param>
     /// <returns>The count, or null when the value carries none.</returns>
     private static int? ReadCount(object? value)
     {
-        if (value is null || value == DependencyProperty.UnsetValue)
+        if (StringLocalizerConverter.IsUnset(value))
         {
             return null;
         }
@@ -197,7 +190,7 @@ public sealed class PluralStringLocalizerConverter : IMultiValueConverter
             return count;
         }
 
-        return int.TryParse(value.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int parsed)
+        return int.TryParse(value!.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int parsed)
             ? parsed
             : null;
     }

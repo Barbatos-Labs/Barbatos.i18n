@@ -214,6 +214,17 @@ public class StringLocalizerExtension : MarkupExtension
     }
 
     /// <summary>
+    /// Creates the binding that watches <see cref="LocalizationSource"/> for culture changes.
+    /// </summary>
+    /// <returns>A one-way binding to the active culture.</returns>
+    internal static BindingBase CreateCultureBinding() =>
+        new Binding(nameof(LocalizationSource.Culture))
+        {
+            Source = LocalizationSource.Instance,
+            Mode = BindingMode.OneWay
+        };
+
+    /// <summary>
     /// Assembles the multi-binding that feeds <see cref="StringLocalizerConverter"/>.
     /// </summary>
     /// <param name="cultureSlot">Whether to prepend the <see cref="LocalizationSource"/> culture value.</param>
@@ -225,12 +236,7 @@ public class StringLocalizerExtension : MarkupExtension
 
         if (cultureSlot)
         {
-            multiBinding.Bindings.Add(
-                new Binding(nameof(LocalizationSource.Culture))
-                {
-                    Source = LocalizationSource.Instance,
-                    Mode = BindingMode.OneWay
-                });
+            multiBinding.Bindings.Add(CreateCultureBinding());
         }
 
         if (keyFromBinding)
@@ -289,44 +295,12 @@ public class StringLocalizerExtension : MarkupExtension
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private object Localize()
     {
-        List<object?>? args = null;
-
-        if (Arg is not null)
-        {
-            args ??= new List<object?>();
-            args.Add(Arg);
-        }
-
-        if (Arg2 is not null)
-        {
-            args ??= new List<object?>();
-            args.Add(Arg2);
-        }
-
-        if (Arg3 is not null)
-        {
-            args ??= new List<object?>();
-            args.Add(Arg3);
-        }
-
-        if (Arg4 is not null)
-        {
-            args ??= new List<object?>();
-            args.Add(Arg4);
-        }
-
-        if (Arg5 is not null)
-        {
-            args ??= new List<object?>();
-            args.Add(Arg5);
-        }
-
         string result = LocalizationLookup.ResolveFormatted(
             ProviderKey,
             LocalizationLookup.NormalizeNamespace(Namespace),
             Text!,
             CultureInfo.CurrentCulture,
-            args?.ToArray()) ?? Text ?? string.Empty;
+            CollectArguments()) ?? Text ?? string.Empty;
 
         if (StringFormat is not null)
         {
@@ -334,5 +308,20 @@ public class StringLocalizerExtension : MarkupExtension
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Collects the static format arguments that were set, in declaration order.
+    /// </summary>
+    /// <returns>The arguments, or null when none was set.</returns>
+    /// <remarks>
+    /// An unset argument is skipped rather than left as a hole, so <see cref="Arg"/> and <see cref="Arg3"/> fill
+    /// <c>{0}</c> and <c>{1}</c> - the same order <see cref="BuildBinding"/> gives the bound values.
+    /// </remarks>
+    private object?[]? CollectArguments()
+    {
+        object?[] arguments = new[] { Arg, Arg2, Arg3, Arg4, Arg5 }.Where(argument => argument is not null).ToArray();
+
+        return arguments.Length > 0 ? arguments : null;
     }
 }

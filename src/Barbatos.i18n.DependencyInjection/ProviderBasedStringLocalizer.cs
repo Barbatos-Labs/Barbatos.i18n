@@ -30,17 +30,7 @@ public class ProviderBasedStringLocalizer(
     {
         CultureInfo culture = cultureManager.GetCulture();
 
-        LocalizationSet? localizationSet = localizations.GetLocalizationSet(culture, baseName)
-            ?? localizations.GetLocalizationSet(culture, default);
-
-        // The lookup walks parent cultures on its own, so a result may come from a less specific culture than
-        // the one asked for. Drop it when the caller said not to include parents.
-        if (localizationSet is not null && !includeParentCultures && !localizationSet.Culture.Equals(culture))
-        {
-            return [];
-        }
-
-        return localizationSet?.Strings.Select(x => new LocalizedString(x.Key, x.Value ?? x.Key)) ?? [];
+        return LocalizationSetLookup.AllStrings(FindSet(culture), culture, includeParentCultures);
     }
 
     /// <summary>
@@ -49,20 +39,14 @@ public class ProviderBasedStringLocalizer(
     /// <param name="name">The string with placeholders.</param>
     /// <param name="placeholders">The values to fill the placeholders with.</param>
     /// <returns>The string with filled placeholders.</returns>
-    private LocalizedString LocalizeString(string name, object[] placeholders)
-    {
-        LocalizationSet? localizationSet = localizations.GetLocalizationSet(cultureManager.GetCulture(), baseName)
-            ?? localizations.GetLocalizationSet(cultureManager.GetCulture(), default);
+    private LocalizedString LocalizeString(string name, object[] placeholders) =>
+        LocalizationSetLookup.Localize(FindSet(cultureManager.GetCulture()), name, placeholders);
 
-        if (localizationSet is null)
-        {
-            return new LocalizedString(name, name, true);
-        }
-
-        string? value = (placeholders is null || placeholders.Length == 0)
-            ? localizationSet[name]
-            : localizationSet[name, placeholders];
-
-        return new LocalizedString(name, value ?? name, value is null);
-    }
+    /// <summary>
+    /// Finds the set named <c>baseName</c>, or the default set when there is none.
+    /// </summary>
+    /// <param name="culture">The culture to look up.</param>
+    /// <returns>The set, or null when the culture has neither.</returns>
+    private LocalizationSet? FindSet(CultureInfo culture) =>
+        localizations.GetLocalizationSet(culture, baseName) ?? localizations.GetLocalizationSet(culture, default);
 }
