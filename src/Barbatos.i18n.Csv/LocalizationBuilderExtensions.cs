@@ -48,24 +48,8 @@ public static class LocalizationBuilderExtensions
         CultureInfo culture
     )
     {
-        if (!path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException(
-                $"Parameter {nameof(path)} in {nameof(FromCsv)} must be path to the CSV file."
-            );
-        }
+        Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> parsedResults = ParseResource(assembly, path);
 
-        string? contents = EmbeddedResourceReader.ReadToEnd(path, assembly);
-
-        if (contents is null)
-        {
-            throw new LocalizationBuilderException(
-                $"Resource {path} not found in assembly {assembly.FullName}."
-            );
-        }
-
-        var parsedResults = CsvLocalizationParser.Parse(contents);
-        
         if (!parsedResults.TryGetValue("", out var localizations))
         {
             throw new ArgumentException($"The CSV file {path} is formatted as a multi-culture file. Please use the FromCsv overload without the CultureInfo parameter.");
@@ -138,24 +122,8 @@ public static class LocalizationBuilderExtensions
         string path
     )
     {
-        if (!path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException(
-                $"Parameter {nameof(path)} in {nameof(FromCsv)} must be path to the CSV file."
-            );
-        }
+        Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> parsedResults = ParseResource(assembly, path);
 
-        string? contents = EmbeddedResourceReader.ReadToEnd(path, assembly);
-
-        if (contents is null)
-        {
-            throw new LocalizationBuilderException(
-                $"Resource {path} not found in assembly {assembly.FullName}."
-            );
-        }
-
-        var parsedResults = CsvLocalizationParser.Parse(contents);
-        
         if (parsedResults.ContainsKey(""))
         {
             throw new ArgumentException($"The CSV file {path} is formatted as a single-culture file. Please use the FromCsv overload with the CultureInfo parameter.");
@@ -206,5 +174,37 @@ public static class LocalizationBuilderExtensions
         }
 
         return builder;
+    }
+
+    /// <summary>
+    /// Reads a CSV file embedded in an assembly and parses it, for both file-based overloads.
+    /// </summary>
+    /// <param name="assembly">The assembly that contains the CSV file.</param>
+    /// <param name="path">The dot-notated resource path to the CSV file.</param>
+    /// <returns>The parsed strings keyed by culture name; an empty name marks a single-culture file.</returns>
+    /// <exception cref="ArgumentException">Thrown when the path is not a CSV file.</exception>
+    /// <exception cref="LocalizationBuilderException">Thrown when the file cannot be found in the assembly.</exception>
+    private static Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> ParseResource(
+        Assembly assembly,
+        string path
+    )
+    {
+        if (!path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Parameter {nameof(path)} in {nameof(FromCsv)} must be path to the CSV file."
+            );
+        }
+
+        string? contents = EmbeddedResourceReader.ReadToEnd(path, assembly);
+
+        if (contents is null)
+        {
+            throw new LocalizationBuilderException(
+                $"Resource {path} not found in assembly {assembly.FullName}."
+            );
+        }
+
+        return CsvLocalizationParser.Parse(contents);
     }
 }
