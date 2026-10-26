@@ -200,25 +200,13 @@ public class PluralStringLocalizerExtension : IMarkupExtension<BindingBase>
     /// <returns>The localized string, or the original text if no localization is found.</returns>
     private string Localize()
     {
-        // Resolved once: the language decides the form, the same providers then answer the lookup.
-        LocalizationLookup.ProviderPair providers = LocalizationLookup.GetProviders(ProviderKey);
-        bool isPlural = PluralRules.IsPlural(Count ?? 0, providers.Culture);
-
-        // Fall back to whichever form was actually supplied when the preferred one is missing.
-        string? selectedKey = isPlural ? PluralText : Text;
-        if (string.IsNullOrEmpty(selectedKey))
-        {
-            selectedKey = isPlural ? Text : PluralText;
-        }
-
-        string localizedString =
-            LocalizationLookup.ResolveValue(
-                providers,
-                LocalizationLookup.NormalizeNamespace(Namespace),
-                selectedKey ?? string.Empty)
-            ?? StringLocalizerExtension.EscapeText(selectedKey);
-
-        string result = string.Format(CultureInfo.CurrentCulture, localizedString, Count ?? 0);
+        // The same steps the live converter runs, so the two paths cannot select different forms.
+        string result = PluralStringLocalizerConverter.Localize(
+            ProviderKey,
+            LocalizationLookup.NormalizeNamespace(Namespace),
+            Text,
+            PluralText,
+            Count ?? 0);
 
         if (StringFormat is not null)
         {
