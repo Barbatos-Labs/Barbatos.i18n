@@ -26,7 +26,7 @@
         "Uses BindText bound to Status for the enum column",
         "Uses PluralStringLocalizer with BindCount for stock",
         "Introduces no custom IValueConverter or lookup table",
-        "Handles count = 0, which takes the singular form",
+        "Handles count = 0 as the language decides: plural in English (\"0 items left\"), not special-cased as singular",
         "Sets Live=True on any Setter.Value markup extension",
         "States the API names without asking the user to verify them"
       ]
