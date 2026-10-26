@@ -43,7 +43,7 @@ Contains the core primitives used to fetch, manage, and build localization sets.
 
 ### `LocalizationBuilder` Class
 
-Provides functionality to build a collection of localized strings for different cultures. It acts as a central registry that aggregates translations from various file formats (JSON, YAML, CSV, INI, RESX) before compiling them into a unified `LocalizationProvider`. Internally, it prevents duplicate registrations for the same culture and namespace using a `HashSet<LocalizationSet>`.
+Provides functionality to build a collection of localized strings for different cultures. It acts as a central registry that aggregates translations from various file formats (JSON, YAML, CSV, INI, RESX) before compiling them into a unified `LocalizationProvider`. Internally, it keeps the sets in a list, in the order they were registered: that order decides which file answers when a key is defined in more than one. Registering a second set with the same name and culture merges it into the first instead of adding a duplicate.
 
 ```csharp
 public class LocalizationBuilder
@@ -52,7 +52,7 @@ public class LocalizationBuilder
 #### Methods
 
 - **`AddLocalization(LocalizationSet localization)`**
-  Manually adds a predefined `LocalizationSet` to the builder. Throws an `InvalidOperationException` if a set with the exact same `Name` and `Culture` is already registered.
+  Manually adds a predefined `LocalizationSet` to the builder. If a set with the same `Name` and `Culture` is already registered, the two are merged: the merged set keeps the position of the one registered first, and its value wins on a key both define. Throws an `ArgumentNullException` when `localization` is null.
 
 - **`FromResource<TResource>(CultureInfo culture)`**
   Extracts localized strings from an embedded `.resx` resource inside the assembly containing `TResource` and registers them for the given `culture`. The set name defaults to the **fully-qualified type name** (e.g. `MyApp.Locales.Strings`).
@@ -176,7 +176,7 @@ public class LocalizationProvider : ILocalizationProvider
 
 #### Remarks
 
-Once the `LocalizationBuilder` finishes parsing files, it generates a `LocalizationProvider`. This provider is then queried by the XAML extensions (like `{i18n:StringLocalizer}`) or the `ICompositeStringLocalizer` in C# to resolve the most appropriate `LocalizationSet` for the active culture.
+Once the `LocalizationBuilder` finishes parsing files, it generates a `LocalizationProvider`. This provider is then queried by the XAML extensions (like `{i18n:StringLocalizer}`) or the `ICompositeStringLocalizer` in C# to resolve a key for the active culture. A lookup without a namespace searches every registered set rather than picking one: the active culture's sets first, then each parent culture's (so `en` serves `en-GB`), in registration order within a culture. `ICompositeStringLocalizer` tries the default (unnamed) set before the rest.
 
 ---
 
