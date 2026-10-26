@@ -1,0 +1,11 @@
+# Root-level keys belong to the default namespace, wherever they appear in the file.
+AppName: Barbatos
+
+Settings:
+  Title: Application Settings
+  Theme: Dark
+
+About:
+  Title: About this app
+
+Footer: Made with Barbatos

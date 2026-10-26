@@ -26,10 +26,12 @@
   <ItemGroup>
     <None Remove="Resources\Translations-pl-PL.yaml" />
     <None Remove="Resources\Translations-ko-KR.yaml" />
+    <None Remove="Resources\Settings-en-US.yaml" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\Translations-ko-KR.yaml" />
+    <EmbeddedResource Include="Resources\Settings-en-US.yaml" />
   </ItemGroup>
 
   <ItemGroup>

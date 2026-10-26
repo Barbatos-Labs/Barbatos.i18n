@@ -24,4 +24,9 @@
     <ProjectReference Include="..\..\src\Barbatos.i18n.DependencyInjection\Barbatos.i18n.DependencyInjection.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\Settings-en-US.yaml" />
+    <EmbeddedResource Include="Resources\Settings-en-US.yaml" />
+  </ItemGroup>
+
 </Project>
