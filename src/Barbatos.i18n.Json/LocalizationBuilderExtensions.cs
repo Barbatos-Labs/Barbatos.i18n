@@ -117,28 +117,31 @@ public static class LocalizationBuilderExtensions
             throw new ArgumentNullException(nameof(contents));
         }
 
-        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(ReadVersion(contents)));
-        return parser.Parse(contents);
+        // One parse serves both the version and the strings. Reading the version used to parse the whole file a
+        // second time, which doubled the cost of loading every JSON locale file. The parsers copy everything they
+        // keep, so nothing outlives the document.
+        using JsonDocument document = JsonReading.ParseDocument(contents);
+
+        IJsonLocalizationParser parser = JsonLocalizationParserFactory.Create(ReadMajorVersion(ReadVersion(document.RootElement)));
+        return parser.Parse(document.RootElement);
     }
 
     /// <summary>
     /// Reads the file's declared schema version.
     /// </summary>
-    /// <param name="contents">The JSON contents.</param>
+    /// <param name="root">The root element of the parsed file.</param>
     /// <returns>The version as written in the file, or "1.0.0" when the file declares none.</returns>
     /// <exception cref="LocalizationBuilderException">Thrown when the root of the file is not an object.</exception>
-    private static string ReadVersion(string contents)
+    private static string ReadVersion(JsonElement root)
     {
-        using JsonDocument document = JsonReading.ParseDocument(contents);
-
-        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        if (root.ValueKind != JsonValueKind.Object)
         {
             throw new LocalizationBuilderException(
-                $"The JSON localization file must have an object at its root, but it starts with {document.RootElement.ValueKind}."
+                $"The JSON localization file must have an object at its root, but it starts with {root.ValueKind}."
             );
         }
 
-        if (!JsonReading.TryFindProperty(document.RootElement, "version", out JsonElement version))
+        if (!JsonReading.TryFindProperty(root, "version", out JsonElement version))
         {
             return "1.0.0";
         }

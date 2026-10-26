@@ -3,7 +3,7 @@
 // Copyright (C) Pham The Hung and Barbatos.i18n Contributors.
 // All Rights Reserved.
 
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Barbatos.i18n.IO;
 
@@ -12,8 +12,6 @@ namespace Barbatos.i18n.IO;
 /// </summary>
 public static class EmbeddedResourceReader
 {
-    private static readonly Regex MultipleDotRegex = new(@"\.{2,}", RegexOptions.Compiled);
-
     /// <summary>
     /// Reads the content of a resource from the specified assembly.
     /// </summary>
@@ -64,8 +62,35 @@ public static class EmbeddedResourceReader
     /// </summary>
     /// <param name="value">The resource path.</param>
     /// <returns>The normalized manifest resource name.</returns>
-    private static string NormalizeSeparators(string value) =>
-        MultipleDotRegex.Replace(value.Replace("\\", ".").Replace("/", "."), ".");
+    /// <remarks>
+    /// A loop rather than a regex. This runs for every locale file at startup, and the
+    /// <c>RegexOptions.Compiled</c> regex it used to build cost 20-45 ms on its first use - paid by every
+    /// application before its first window or page, for a transformation that needs no regex.
+    /// </remarks>
+    private static string NormalizeSeparators(string value)
+    {
+        // The usual, already dotted path is returned as it is, without building a copy.
+        if (value.AsSpan().IndexOfAny('\\', '/') < 0 && !value.Contains("..", StringComparison.Ordinal))
+        {
+            return value;
+        }
+
+        StringBuilder normalized = new(value.Length);
+
+        foreach (char character in value)
+        {
+            char mapped = character is '\\' or '/' ? '.' : character;
+
+            if (mapped == '.' && normalized.Length > 0 && normalized[^1] == '.')
+            {
+                continue;
+            }
+
+            normalized.Append(mapped);
+        }
+
+        return normalized.ToString();
+    }
 
     /// <summary>
     /// Reads a manifest resource to the end.

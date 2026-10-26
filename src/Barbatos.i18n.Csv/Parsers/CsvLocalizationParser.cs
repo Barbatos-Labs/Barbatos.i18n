@@ -12,8 +12,10 @@ internal static class CsvLocalizationParser
 {
     public static Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> Parse(string contents)
     {
-        Dictionary<string, List<KeyValuePair<LocalizationKey, string?>>> results = new();
-        Dictionary<string, HashSet<LocalizationKey>> cultureKeys = new();
+        // One dictionary per culture, filled directly: it detects a duplicate key and is what LocalizationSet's O(1)
+        // lookup needs. A list, a set to detect duplicates and a final copy into a dictionary used to hold every
+        // entry three times over.
+        Dictionary<string, Dictionary<LocalizationKey, string?>> results = new();
         List<List<string>> rows = ParseCsv(contents);
         
         bool isFirstRow = true;
@@ -39,7 +41,6 @@ internal static class CsvLocalizationParser
                     {
                         cultures.Add(""); // Single culture
                         results[""] = new();
-                        cultureKeys[""] = new();
                         break; // Only need one column
                     }
                     else
@@ -55,7 +56,6 @@ internal static class CsvLocalizationParser
 
                         cultures.Add(colName);
                         results[colName] = new();
-                        cultureKeys[colName] = new();
                     }
                 }
 
@@ -79,33 +79,23 @@ internal static class CsvLocalizationParser
                 string cultureName = cultures[i];
                 string value = row[i];
                 
-                // Add to result if the dictionary has the list (it should)
-                if (results.TryGetValue(cultureName, out var list) && cultureKeys.TryGetValue(cultureName, out var keysSet))
+                // An empty header cell maps to no culture, so its column has no dictionary and is skipped.
+                if (results.TryGetValue(cultureName, out Dictionary<LocalizationKey, string?>? strings)
+                    && !strings.TryAdd(locKey, value))
                 {
-                    // Check for duplicate keys in the specific culture
-                    if (!keysSet.Add(locKey))
-                    {
-                        throw new LocalizationBuilderException($"The contents of the CSV file contains duplicate \"{key}\" keys.");
-                    }
-                    list.Add(new KeyValuePair<LocalizationKey, string?>(locKey, value));
+                    throw new LocalizationBuilderException($"The contents of the CSV file contains duplicate \"{key}\" keys.");
                 }
             }
         }
         
-        // A dictionary, not the accumulating list: LocalizationSet indexes a set by key on every lookup, and
-        // only takes its O(1) path when the strings are dictionary-backed. Every other parser already returns
-        // one, so a CSV-backed set was alone in scanning all of its entries per key.
-        Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> finalResults = new();
-        foreach (var kvp in results)
+        // Dictionary-backed, as LocalizationSet's O(1) lookup path requires; a CSV-backed set used to be alone in
+        // scanning all of its entries per key.
+        Dictionary<string, IEnumerable<KeyValuePair<LocalizationKey, string?>>> finalResults = new(results.Count);
+        foreach (KeyValuePair<string, Dictionary<LocalizationKey, string?>> culture in results)
         {
-            Dictionary<LocalizationKey, string?> byKey = new();
-            foreach (KeyValuePair<LocalizationKey, string?> pair in kvp.Value)
-            {
-                byKey[pair.Key] = pair.Value;
-            }
-
-            finalResults[kvp.Key] = byKey;
+            finalResults[culture.Key] = culture.Value;
         }
+
         return finalResults;
     }
 

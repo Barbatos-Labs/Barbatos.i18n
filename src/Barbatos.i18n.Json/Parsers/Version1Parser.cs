@@ -7,11 +7,9 @@ namespace Barbatos.i18n.Json.Parsers;
 
 internal sealed class Version1Parser : IJsonLocalizationParser
 {
-    public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(string contents)
+    public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(JsonElement root)
     {
-        using JsonDocument document = JsonReading.ParseDocument(contents);
-
-        if (!JsonReading.TryFindProperty(document.RootElement, "strings", out JsonElement strings)
+        if (!JsonReading.TryFindProperty(root, "strings", out JsonElement strings)
             || strings.ValueKind != JsonValueKind.Array)
         {
             throw new LocalizationBuilderException(

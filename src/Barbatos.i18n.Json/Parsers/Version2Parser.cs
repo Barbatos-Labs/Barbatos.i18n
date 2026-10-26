@@ -7,14 +7,11 @@ namespace Barbatos.i18n.Json.Parsers;
 
 internal sealed class Version2Parser : IJsonLocalizationParser
 {
-    public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(string contents)
+    public IEnumerable<KeyValuePair<LocalizationKey, string?>> Parse(JsonElement root)
     {
-        // Shares the version-1 parse options, so a trailing comma is tolerated in both schemas rather than only
-        // in the one that used to go through JsonSerializerOptions.
-        using JsonDocument document = JsonReading.ParseDocument(contents);
         Dictionary<LocalizationKey, string> localizedStrings = new();
 
-        foreach (JsonProperty property in document.RootElement.EnumerateObject())
+        foreach (JsonProperty property in root.EnumerateObject())
         {
             if (string.Equals(property.Name, "Version", StringComparison.OrdinalIgnoreCase))
             {
@@ -46,15 +43,12 @@ internal sealed class Version2Parser : IJsonLocalizationParser
 
             if (value is not null)
             {
-                LocalizationKey key = new(currentPath);
-                if (localizedStrings.ContainsKey(key))
+                if (!localizedStrings.TryAdd(new LocalizationKey(currentPath), value))
                 {
                     throw new LocalizationBuilderException(
                         $"The contents of the JSON file contains duplicate \"{currentPath}\" keys."
                     );
                 }
-
-                localizedStrings.Add(key, value);
             }
         }
     }
