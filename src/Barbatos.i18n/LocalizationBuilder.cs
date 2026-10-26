@@ -12,8 +12,8 @@ namespace Barbatos.i18n;
 /// </summary>
 public class LocalizationBuilder
 {
-    // A list, not a set: duplicates are already rejected by AddLocalization, and lookups resolve a key by
-    // searching sets in registration order, so that order has to be the one the caller wrote.
+    // A list, not a set: AddLocalization already merges a set into one of the same name and culture, and lookups
+    // resolve a key by searching sets in registration order, so that order has to be the one the caller wrote.
     private readonly List<LocalizationSet> _localizations = [];
 
     private CultureInfo? _selectedCulture;
