@@ -89,7 +89,9 @@ One is singular, anything else is plural, and the count is passed as `{0}` to th
 and `BindPluralText` supply the two keys from bindings when they are data-driven.
 
 **Zero follows the language.** English says "0 items", French says "0 article" — zero is the only count whose
-form differs between languages, so `PluralRules` decides it from the active UI culture. You do not have to do
+form differs between languages, so `PluralRules` decides it from the language of the translation being shown:
+the culture of the provider that supplied it, not the thread's UI culture. An app that sets its language on the
+builder and never calls `SetCulture` therefore still gets French grammar with French text. You do not have to do
 anything for this; it is worth knowing because it means a translation's plural string has to read correctly
 with a zero in it.
 
