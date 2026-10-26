@@ -31,7 +31,7 @@ in what order. The differences are deliberate:
 | `LocalizationSetStringLocalizer` | the one set it was given |
 | `ProviderBasedStringLocalizer` | the set named `baseName`, else the **default set** |
 | `ProviderBasedStringLocalizer<T>` | only the set named after `typeof(T).FullName`; **no** default-set fallback |
-| `CompositeStringLocalizer` | the default set, then every set for the culture in registration order |
+| `CompositeStringLocalizer` | the default set, then every set for the culture and each parent culture, most specific first, in registration order within one |
 | `CompositeStringLocalizer<T>` | the set for `T`, then exactly what `CompositeStringLocalizer` searches |
 
 `LookupPrecedenceTests` pins the table. `ICompositeStringLocalizer` is the one to recommend to consumers who do
